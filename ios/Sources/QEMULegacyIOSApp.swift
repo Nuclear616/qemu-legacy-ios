@@ -27,6 +27,15 @@ struct ContentView: View {
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
+    @AppStorage("appAppearance") private var appAppearance = "system"
+
+    private var selectedColorScheme: ColorScheme? {
+        switch appAppearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -167,6 +176,7 @@ struct ContentView: View {
                 Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak and Cydia options will take effect after that runtime is integrated.")
             }
         }
+        .preferredColorScheme(selectedColorScheme)
     }
 
     private func importPreparedBundle(_ result: Result<[URL], Error>) {
@@ -225,12 +235,24 @@ struct EmulatorSettingsView: View {
     @AppStorage("enableDRAv6") private var enableDRAv6 = false
     @AppStorage("draBlobMode") private var draBlobMode = "import"
     @AppStorage("prepareIOS613OTA") private var prepareIOS613OTA = false
+    @AppStorage("appAppearance") private var appAppearance = "system"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("App theme", selection: $appAppearance) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                Text("System follows your iPhone's appearance setting. Light and Dark override it for the entire emulator app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Guest device") {
                 Picker("CPU / device family", selection: $cpuFamily) {
                     Text("A4 · iPhone 4").tag("A4")
