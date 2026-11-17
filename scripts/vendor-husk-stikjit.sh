@@ -94,6 +94,7 @@ if ! command -v rustup >/dev/null 2>&1; then
   source "$HOME/.cargo/env"
 fi
 rustup target add aarch64-apple-ios
+export IPHONEOS_DEPLOYMENT_TARGET=17.0
 (
   cd "$VENDOR/src"
   cargo build --release --locked --target aarch64-apple-ios
