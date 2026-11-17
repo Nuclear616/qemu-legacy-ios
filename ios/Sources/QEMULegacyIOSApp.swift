@@ -26,6 +26,7 @@ struct ContentView: View {
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
+    @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
 
     var body: some View {
         NavigationStack {
