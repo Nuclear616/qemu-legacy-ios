@@ -1,27 +1,57 @@
-# Vendored QEMU iPhone 4 / A4 machine sources
+# Vendored iPhone 4 GSM (n90ap) source
 
-This directory contains source-file copies from `samhenrigold/qemu-ios` at upstream commit:
+This directory contains copied source files from `samhenrigold/qemu-ios` at
+`db230fe8e8e4d297724b2eccdc38bdc21876696a`.
 
-`db230fe8e8e4d297724b2eccdc38bdc21876696a`
+## Copied implementation
 
-The iPhone 4 GSM machine is implemented in upstream `hw/arm/ipad1.c` as the `a4_n90` board profile and registered as `iPhone-4`. The same source file also contains the related iPad 1 and iPod touch 4 A4 board profiles. The S5L8930 peripheral models and reused iPod-family devices are copied under their original upstream-relative paths here.
+- `hw/arm/ipad1.c`: A4 SoC and board profiles, including `a4_n90` and the
+  `iPhone-4` machine type.
+- `hw/arm/s5l8930_*.c` and `include/hw/arm/s5l8930.h`: S5L8930/A4 SoC
+  devices, MMIO, interrupts, memory controller, display, DART, DMA, IOP,
+  storage, power, I2C, audio and related hardware.
+- `hw/arm/ipod_touch_*.c` and matching headers: shared A4-generation
+  peripherals used by the iPhone 4 board.
+- `hw/arm/it_iboot.c`: iBoot/boot handoff support.
+- `hw/arm/nand-image.c`, `s5l8900_nand_ecc.c`, and
+  `s5l8930_h2fmi.c`: NAND image, ECC and controller support.
+- `hw/arm/ipod_touch_nor_spi.c`: NOR/SPI support used by the board's
+  firmware layout.
+- `hw/misc/ios_baseband*.c` and `ios_vibrator.c`: baseband and vibration
+  device models.
+- `hw/arm/guest-*.c`, `guest-services.c`, `guest-gles.c`, and
+  `ipod-agent.c`: guest-side service bridges used by the upstream machine.
+- `docs/n90/README.md`: upstream board notes and the documented iOS 7.1.2
+  boot results.
+- `upstream/hw/arm/meson.build`, `upstream/hw/arm/Kconfig`, and the
+  misc build metadata: reference build registration from the same revision.
+- `upstream/COPYING` and `upstream/LICENSE`: upstream license texts.
 
-## Contents
+## Firmware and NAND data
 
-- `hw/arm/ipad1.c`: A4 board definitions, including the iPhone 4 GSM `a4_n90` profile, machine registration, boot and device wiring.
-- `hw/arm/s5l8930_*.c` and `include/hw/arm/s5l8930.h`: S5L8930 SoC peripheral implementations and declarations.
-- `hw/arm/s5l8920_pwm.c`: shared PWM model used by the iPhone 4.
-- `hw/arm/ipod_touch_*.c` and matching headers: reused peripheral models (touch, USB, SPI, audio, GPIO, sensors, PMU, timers, and related devices).
-- `hw/misc/ios_*.c` and matching headers: baseband and vibration support.
-- `hw/arm/guest-*.c`, `hw/arm/ipod-agent.c`, `hw/arm/it_iboot.c`, and headers: guest services, graphics, packaging, and boot helpers used by this QEMU machine.
-- `upstream/docs/n90/README.md`: upstream board notes and boot-validation record.
-- `upstream/COPYING`, `upstream/LICENSE`: upstream licensing notices.
-- `upstream/hw/arm/Kconfig`, `upstream/hw/arm/meson.build`: upstream machine build-registration context.
+The emulator source knows how to load KBoot, NAND and NOR inputs; this
+repository does **not** contain Apple's iBoot, boot ROM, IPSW, kernel,
+root filesystem, NAND dump, NOR contents, activation data or Wi-Fi firmware.
+Those are firmware assets, not emulator source files. Supply a compatible
+iPhone3,1/iPhone 4 GSM firmware set that you are entitled to use. For iOS
+7.1.2, upstream's documented build is `n90ap-11D257`.
 
-## Important build note
+The board code expects a prepared KBoot image plus NAND storage and optional
+NOR overlay paths. It does not manufacture those files from an IPSW by itself;
+the upstream FirmwareKit preparation pipeline is a separate dependency.
 
-These are copied hardware/board sources, not a complete standalone QEMU source tree. They include references to QEMU core headers, CPU execution, device infrastructure, and other shared QEMU subsystems. The pinned QEMU source dependency is still needed for those generic components until the full engine is vendored and the build is wired to this copy. The copied board sources are not yet compiled by the iOS app target.
+## Build integration status
 
-No iPhone firmware, IPSW, NAND image, NOR image, or other Apple firmware payload is included. Supply legally obtained guest firmware separately.
+The source is copied as ordinary files (not a Git submodule). It is staged
+into the QEMU source tree by `scripts/stage-qemu-iphone4.sh`. The generic
+QEMU CPU, TCG, memory, device framework and build system are still required;
+the current repository keeps the pinned QEMU source checkout for that engine.
+The copied board source has not yet been compiled or boot-tested in this fork.
 
-Preserve the upstream GPL and other applicable notices when modifying or redistributing these files. The user's authorization to reuse their Podium fork does not change the separate licensing obligations for QEMU source.
+## Cydia
+
+Cydia is not part of the hardware emulator. It can only be installed inside
+the guest after iOS 7.1.2 boots and a compatible jailbreak/bootstrap has been
+applied. No Cydia app package or jailbreak payload is included here. The
+eventual app should allow importing user-supplied jailbreak/bootstrap files
+rather than bundling copyrighted or device-specific firmware.
