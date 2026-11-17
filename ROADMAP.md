@@ -14,15 +14,17 @@ Items remain incomplete until implemented and tested.
 - [x] Copy selected Podium ARMv7, memory, boot and UI source files.
 - [x] Remove the upstream QEMU Git submodule link; keep board files as ordinary vendored source.
 - [x] Add a staging script for overlaying board source into a separately obtained QEMU tree.
-- [ ] Vendor or otherwise reproducibly provision the generic QEMU engine and all required dependencies.
-- [ ] Compile the staged QEMU source and resolve missing dependencies/licenses.
+- [x] Pin the complete QEMU-iOS engine as `vendor/qemu-engine` at `db230fe8e8e4d297724b2eccdc38bdc21876696a`.
+- [ ] Build the QEMU engine for the iOS device SDK with a supported dependency set.
+- [ ] Compile the staged N90 source and resolve any overlay/build conflicts.
 
 ## iOS application
 
 - [x] Add a SwiftUI iOS app target definition using XcodeGen.
 - [x] Add a firmware file picker and emulator status shell.
 - [ ] Connect IPSW parsing and prepared KBoot/NAND/NOR inputs.
-- [ ] Link a complete A4 CPU/platform implementation to the app.
+- [ ] Link the iOS-targeted QEMU engine and app-facing C ABI to the app.
+- [ ] Add a Swift/Objective-C bridge for display, touch, lifecycle and storage.
 - [ ] Connect the Start action to the emulator runtime.
 - [ ] Add machine, memory, CPU and storage configuration.
 - [ ] Add optional user-supplied jailbreak/bootstrap import for Cydia after guest boot.
@@ -53,7 +55,7 @@ Items remain incomplete until implemented and tested.
 | iPhone 4/A4 board source | Copied and N90 Wi-Fi/8 GiB NAND settings added; not compiled in this fork |
 | BCM4329 Wi-Fi | SDIO/full-MAC models registered; guest networking not validated in this fork |
 | 8 GiB NAND | Geometry preset and sparse-store generator added; guest formatting/boot not tested |
-| Generic QEMU engine | Not vendored; submodule removed |
+| Generic QEMU engine | Pinned as submodule; not built for iOS or linked |
 | Podium ARMv7/DBT source | Selected files copied; not integrated |
 | Native iOS app target | SwiftUI/XcodeGen scaffold |
 | IPA workflow | Successful unsigned scaffold build |
