@@ -23,6 +23,9 @@ fi
 # Stage the board and Wi-Fi sources that belong to this app's iPhone 4 profile.
 sh "$ROOT/scripts/stage-qemu-iphone4.sh"
 
+# The iOS SDK provides CommonCrypto, not OpenSSL headers/libraries.
+python3 "$ROOT/scripts/patch-qemu-ios-apple-aes.py" "$ENGINE/include/hw/arm/ipod_touch_aes.h"
+
 # This device configuration deliberately includes only the A4 iPhone 4 machine.
 mkdir -p "$ENGINE/configs/devices/arm-softmmu"
 printf '%s\n' 'CONFIG_IPAD1=y' > "$ENGINE/configs/devices/arm-softmmu/ios.mak"
