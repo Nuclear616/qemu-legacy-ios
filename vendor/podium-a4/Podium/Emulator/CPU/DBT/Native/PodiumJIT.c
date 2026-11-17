@@ -107,17 +107,17 @@ void *podium_jit_allocate(size_t size, void **writable, PodiumJITMode *mode) {
     vm_prot_t current = 0, maximum = 0;
     kern_return_t result = vm_remap(mach_task_self(), &alias, size, 0, VM_FLAGS_ANYWHERE,
                                     mach_task_self(), (vm_address_t)executable, false,
-                                    &current, &maximum, VM_INHERIT_DEFAULT);
+                                    &current, &maximum, VM_INHERIT_NONE);
     if (result != KERN_SUCCESS) {
         fprintf(stderr, "[podium-jit] vm_remap writable alias failed (kr %d)\n", result);
         munmap(executable, size);
         return NULL;
     }
 
-    result = vm_protect(mach_task_self(), alias, size, true, VM_PROT_READ | VM_PROT_WRITE);
-    if (result == KERN_SUCCESS) {
-        result = vm_protect(mach_task_self(), alias, size, false, VM_PROT_READ | VM_PROT_WRITE);
-    }
+    // The remapped alias must be made writable without raising its maximum
+    // protection. StikJIT's TXM path relies on the debugger-prepared RX pages;
+    // requesting a new maximum RW protection can be rejected by the kernel.
+    result = vm_protect(mach_task_self(), alias, size, false, VM_PROT_READ | VM_PROT_WRITE);
     if (result != KERN_SUCCESS) {
         fprintf(stderr, "[podium-jit] writable alias protection failed (kr %d, current %d, maximum %d)\n",
                 result, current, maximum);
