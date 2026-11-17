@@ -182,3 +182,16 @@ jobs:
             prepared/*.zip
             prepared/SHA256SUMS
           fail_on_unmatched_files: true
+
+      - name: Attach firmware bundles to the latest IPA release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("ipa-build-"))] | sort_by(.createdAt) | last | .tagName // ""')"
+          if [ -n "$TAG" ]; then
+            gh release upload "$TAG" prepared/*.zip prepared/SHA256SUMS --clobber
+            echo "Attached prepared firmware bundles to $TAG"
+          else
+            echo "No IPA release exists yet; the prepared-firmware release above contains the bundles."
+          fi
