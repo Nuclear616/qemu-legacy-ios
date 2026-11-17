@@ -64,6 +64,8 @@ PY
 
 # QEMU's configure script runs natively once to generate config-host.mak and
 # its Meson venv. The actual objects are then cross-compiled for iOS ARM64.
+# QEMU's Meson coroutine detection deliberately excludes ucontext on Darwin;
+# sigaltstack is the supported backend on macOS/iOS. Do not link libucontext.
 # The bootstrap configure is a NATIVE macOS build. Keep Homebrew's native
 # GLib metadata visible here; pointing pkg-config at the iOS ARM64 archive
 # makes configure compare host size_t against the target GLib ABI and fail.
@@ -95,7 +97,7 @@ pkg-config = 'pkg-config'
 
 [built-in options]
 c_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
-c_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface', '-lucontext']
+c_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface']
 cpp_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
 cpp_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface', '-lucontext']
 objc_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
@@ -127,7 +129,7 @@ if [ ! -f "$IOS/build.ninja" ]; then
             -Dcoreaudio=disabled -Dcurl=disabled -Dtools=disabled \
             -Dlibssh=disabled -Dbzip2=disabled -Dslirp=enabled \
             -Dtcg=enabled -Dtcg_interpreter=true \
-            -Dcoroutine_backend=ucontext -Dwerror=false
+            -Dcoroutine_backend=sigaltstack -Dwerror=false
     )
 fi
 
