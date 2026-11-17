@@ -1,0 +1,1 @@
+ipod_touch_sdio_log(const char *msg) "%s"
