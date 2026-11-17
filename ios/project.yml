@@ -46,7 +46,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
         PRODUCT_NAME: QEMULegacyIOS
-        SWIFT_OBJC_BRIDGING_HEADER: Sources/HuskJIT/AstraJITBridge.h
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/AstraJIT/AstraJITBridge.h
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/build/lib"
@@ -57,7 +57,7 @@ targets:
           - "$(inherited)"
           - "@executable_path/Frameworks"
     dependencies:
-      - target: HuskJITHelper
+      - target: AstraJITHelper
     postBuildScripts:
       - name: Embed StikJIT framework for helper
         script: |
@@ -89,7 +89,7 @@ targets:
         basedOnDependencyAnalysis: false
 
   # Separate process: StikJIT attaches to the main app and services TXM traps.
-  HuskJITHelper:
+  AstraJITHelper:
     type: app-extension
     platform: iOS
     deploymentTarget: "26.0"
@@ -98,7 +98,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
-        INFOPLIST_FILE: Sources/HuskJITHelper/Info.plist
+        INFOPLIST_FILE: Sources/AstraJITHelper/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         APPLICATION_EXTENSION_API_ONLY: YES
         CODE_SIGN_STYLE: Automatic
