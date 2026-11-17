@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true
       - name: Calculate next app version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
