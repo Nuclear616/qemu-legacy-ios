@@ -42,9 +42,6 @@ SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 AR="$(xcrun --find ar)"
 RANLIB="$(xcrun --find ranlib)"
 STRIP="$(xcrun --find strip)"
-export PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
-export PKG_CONFIG_PATH=""
-export PKG_CONFIG_SYSROOT_DIR="$SDK"
 
 # The dependency archive records the prefix used when it was built. Relocate
 # its .pc files to this runner's temp directory and use the SDK's zlib.
@@ -67,6 +64,9 @@ PY
 
 # QEMU's configure script runs natively once to generate config-host.mak and
 # its Meson venv. The actual objects are then cross-compiled for iOS ARM64.
+# The bootstrap configure is a NATIVE macOS build. Keep Homebrew's native
+# GLib metadata visible here; pointing pkg-config at the iOS ARM64 archive
+# makes configure compare host size_t against the target GLib ABI and fail.
 if [ ! -f "$BOOT/config-host.mak" ]; then
     mkdir -p "$BOOT"
     (
@@ -75,6 +75,11 @@ if [ ! -f "$BOOT/config-host.mak" ]; then
             --enable-slirp --disable-werror --with-devices-arm=ios
     )
 fi
+
+# Only the actual iOS cross-build may see the target dependency archive.
+export PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
+export PKG_CONFIG_PATH=""
+export PKG_CONFIG_SYSROOT_DIR="$SDK"
 
 mkdir -p "$IOS"
 CROSS="$IOS/cross-ios-arm64.txt"
