@@ -36,6 +36,31 @@ if [ ! -f "$ENGINE/include/openssl/aes.h" ]; then
   exit 5
 fi
 
+# The A4 board also calls into the shared iPod Touch support modules. They
+# are copied into the engine tree above, but the upstream IPAD1 Meson stanza
+# only lists the board-specific files. Register the shared implementations
+# here or the final link leaves their symbols unresolved.
+SHARED_A4_SOURCES="
+  guest-services.c guest-pasteboard.c guest-package.c ipod-agent.c guest-gles.c
+  it_iboot.c ipod_touch_clock.c ipod_touch_chipid.c ipod_touch_gpio.c
+  ipod_touch_sysic.c ipod_touch_timer.c ipod_touch_spi.c ipod_touch_nor_spi.c
+  ipod_touch_sha1.c ipod_touch_aes.c ipod_touch_pke.c ipod_touch_pcf50633_pmu.c
+  ipod_touch_unknown1.c ipod_touch_wdt.c ipod_touch_mpvd.c ipod_touch_h264.c
+  ipod_touch_scaler.c ipod_touch_swi.c ipod_video.c ipod_touch_lcd.c
+  ipod_touch_mipi_dsi.c ipod_touch_fmss.c ipod_touch_mbx.c
+  ipod_touch_cd3272_mikey.c ipod_touch_cs42l58.c ipod_touch_amc.c
+  ipod_touch_i2s.c ipod_touch_lm48821.c ipod_touch_lis302dl.c
+  ipod_touch_tethered.c ipod_touch_multitouch.c ipod_touch_tvout.c
+  ipod_touch_isl29003dl.c ipod_touch_bt.c
+  ipod_touch_usb_otg.c ipod_touch_tcp_usb.c ipod_touch_usb_phys.c
+"
+for source in $SHARED_A4_SOURCES; do
+  if [ ! -f "$ENGINE/hw/arm/$source" ]; then
+    echo "Missing shared A4 support source: hw/arm/$source" >&2
+    exit 4
+  fi
+done
+
 # Keep this list aligned with the pinned CONFIG_IPAD1 source registrations.
 for source in \
   ipad1.c s5l8930_dmc.c s5l8930_pmgr.c s5l8930_gpio.c \
@@ -78,6 +103,33 @@ echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
 echo "N90 uses Samsung 0xB614D5AD (4 KiB pages, 128 pages/block); the 8 GiB profile uses two CEs on each of two buses."
 echo "The BCM4329 Wi-Fi bridge is enabled by default; it auto-creates user-mode NAT networking as wifi0."
 echo "The CONFIG_IPAD1 Meson registration below enables the BCM4329 SDIO card models."
+
+# Register shared A4 support exactly once. GLES host acceleration is
+# deliberately stubbed for this first iOS runtime; the LCD/scaler path remains
+# available, while guest GLES acceleration is a separate follow-up.
+if ! grep -q "Project Astra: shared A4 peripheral implementations" "$ENGINE/hw/arm/meson.build"; then
+  cat >> "$ENGINE/hw/arm/meson.build" <<'EOF'
+
+# Project Astra: shared A4 peripheral implementations.
+arm_ss.add(when: 'CONFIG_IPAD1', if_true: files(
+  'guest-services.c', 'guest-pasteboard.c', 'guest-package.c',
+  'ipod-agent.c', 'guest-gles.c', 'it_iboot.c',
+  'ipod_touch_clock.c', 'ipod_touch_chipid.c', 'ipod_touch_gpio.c',
+  'ipod_touch_sysic.c', 'ipod_touch_timer.c', 'ipod_touch_spi.c',
+  'ipod_touch_nor_spi.c', 'ipod_touch_sha1.c', 'ipod_touch_aes.c',
+  'ipod_touch_pke.c', 'ipod_touch_pcf50633_pmu.c',
+  'ipod_touch_unknown1.c', 'ipod_touch_wdt.c', 'ipod_touch_mpvd.c',
+  'ipod_touch_h264.c', 'ipod_touch_scaler.c', 'ipod_touch_swi.c',
+  'ipod_video.c', 'ipod_touch_lcd.c', 'ipod_touch_mipi_dsi.c',
+  'ipod_touch_fmss.c', 'ipod_touch_mbx.c', 'ipod_touch_cd3272_mikey.c',
+  'ipod_touch_cs42l58.c', 'ipod_touch_amc.c', 'ipod_touch_i2s.c',
+  'ipod_touch_lm48821.c', 'ipod_touch_lis302dl.c', 'ipod_touch_tethered.c',
+  'ipod_touch_multitouch.c', 'ipod_touch_tvout.c', 'ipod_touch_isl29003dl.c',
+  'ipod_touch_bt.c', 'ipod_touch_usb_otg.c', 'ipod_touch_tcp_usb.c',
+  'ipod_touch_usb_phys.c', 'gles-host-stub.c'
+))
+EOF
+fi
 
 # Register the shared BCM4329 SDIO/full-MAC implementation exactly once.
 if ! grep "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" | grep -q "ipod_touch_sdio.c"; then
