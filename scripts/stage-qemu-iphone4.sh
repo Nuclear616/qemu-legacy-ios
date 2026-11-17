@@ -41,7 +41,7 @@ fi
 # only lists the board-specific files. Register the shared implementations
 # here or the final link leaves their symbols unresolved.
 SHARED_A4_SOURCES="
-  guest-services.c guest-pasteboard.c guest-package.c ipod-agent.c guest-gles.c
+  guest-services.c guest-pasteboard.c guest-package.c ipod-agent.c guest-gles.c ios-posix-compat.c
   it_iboot.c ipod_touch_clock.c ipod_touch_chipid.c ipod_touch_gpio.c
   ipod_touch_sysic.c ipod_touch_timer.c ipod_touch_spi.c ipod_touch_nor_spi.c
   ipod_touch_sha1.c ipod_touch_aes.c ipod_touch_pke.c ipod_touch_pcf50633_pmu.c
@@ -104,37 +104,9 @@ echo "N90 uses Samsung 0xB614D5AD (4 KiB pages, 128 pages/block); the 8 GiB prof
 echo "The BCM4329 Wi-Fi bridge is enabled by default; it auto-creates user-mode NAT networking as wifi0."
 echo "The CONFIG_IPAD1 Meson registration below enables the BCM4329 SDIO card models."
 
-# Register shared A4 support exactly once. GLES host acceleration is
-# deliberately stubbed for this first iOS runtime; the LCD/scaler path remains
-# available, while guest GLES acceleration is a separate follow-up.
-if ! grep -q "Project Astra: shared A4 peripheral implementations" "$ENGINE/hw/arm/meson.build"; then
-  cat >> "$ENGINE/hw/arm/meson.build" <<'EOF'
-
-# Project Astra: shared A4 peripheral implementations.
-arm_ss.add(when: 'CONFIG_IPAD1', if_true: files(
-  'guest-services.c', 'guest-pasteboard.c', 'guest-package.c',
-  'ipod-agent.c', 'guest-gles.c', 'it_iboot.c',
-  'ipod_touch_clock.c', 'ipod_touch_chipid.c', 'ipod_touch_gpio.c',
-  'ipod_touch_sysic.c', 'ipod_touch_timer.c', 'ipod_touch_spi.c',
-  'ipod_touch_nor_spi.c', 'ipod_touch_sha1.c', 'ipod_touch_aes.c',
-  'ipod_touch_pke.c', 'ipod_touch_pcf50633_pmu.c',
-  'ipod_touch_unknown1.c', 'ipod_touch_wdt.c', 'ipod_touch_mpvd.c',
-  'ipod_touch_h264.c', 'ipod_touch_scaler.c', 'ipod_touch_swi.c',
-  'ipod_video.c', 'ipod_touch_lcd.c', 'ipod_touch_mipi_dsi.c',
-  'ipod_touch_fmss.c', 'ipod_touch_mbx.c', 'ipod_touch_cd3272_mikey.c',
-  'ipod_touch_cs42l58.c', 'ipod_touch_amc.c', 'ipod_touch_i2s.c',
-  'ipod_touch_lm48821.c', 'ipod_touch_lis302dl.c', 'ipod_touch_tethered.c',
-  'ipod_touch_multitouch.c', 'ipod_touch_tvout.c', 'ipod_touch_isl29003dl.c',
-  'ipod_touch_bt.c', 'ipod_touch_usb_otg.c', 'ipod_touch_tcp_usb.c',
-  'ipod_touch_usb_phys.c', 'gles-host-stub.c'
-))
-EOF
-fi
-
-# Register the shared BCM4329 SDIO/full-MAC implementation exactly once.
-if ! grep "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" | grep -q "ipod_touch_sdio.c"; then
-  printf '%s\n' "" "# QEMU Legacy iOS: BCM4329 Wi-Fi for the iPhone 4 GSM board." "arm_ss.add(when: 'CONFIG_IPAD1', if_true: files('ipod_touch_sdio.c', 'bcm_fullmac.c', 'mrvl8686.c'))" >> "$ENGINE/hw/arm/meson.build"
-fi
+# Register shared A4 support before hw_arch exports arm_ss. Appending these
+# declarations to the end of Meson file silently omits them from the build.
+python3 "$ROOT/scripts/patch-qemu-iphone4-meson.py" "$ENGINE/hw/arm/meson.build"
 
 TRACE_EVENTS="$ENGINE/hw/arm/trace-events"
 TRACE_FRAGMENT="$VENDOR/upstream/hw/arm/trace-events"
