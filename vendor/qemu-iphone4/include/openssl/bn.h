@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct project_astra_bignum_st {
+typedef struct bignum_st {
     mpz_t value;
 } BIGNUM;
 
