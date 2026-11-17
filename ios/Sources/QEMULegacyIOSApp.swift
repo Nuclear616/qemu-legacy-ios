@@ -142,7 +142,7 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingFirmwareBrowser) {
-                IPSWFirmwareBrowserView(selectedVersion: guestIOSVersion) { url, version in
+                IPSWFirmwareBrowserView(deviceIdentifier: cpuFamily == "ARM11" ? "iPhone1,2" : (cpuFamily == "A5" ? "iPhone4,1" : "iPhone3,1"), selectedVersion: guestIOSVersion) { url, version in
                     firmwareURL = url
                     guestIOSVersion = version
                     status = "Downloaded iOS \\(version) IPSW. QEMU runtime is not connected yet."
