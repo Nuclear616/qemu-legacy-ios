@@ -42,7 +42,7 @@ jobs:
               "blocks_per_ce": 4096,
               "pages_per_block": 128,
               "page_bytes": 4096,
-              "spare_bytes": 12,
+              "spare_bytes": 128,
           }
           pages_per_ce = g["blocks_per_ce"] * g["pages_per_block"]
           expected_file_size = pages_per_ce * (g["page_bytes"] + g["spare_bytes"])
