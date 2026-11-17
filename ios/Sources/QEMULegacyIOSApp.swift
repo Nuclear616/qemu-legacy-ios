@@ -71,13 +71,14 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingFirmwareBrowser) {
             IPSWFirmwareBrowserView(
-                deviceIdentifier: selectedDeviceIdentifier,
-                selectedVersion: guestIOSVersion
-            ) { url, version in
-                firmwareURL = url
-                guestIOSVersion = version
-                status = "Downloaded iOS \(version) IPSW. QEMU runtime is not connected yet."
-            }
+                selectedVersion: guestIOSVersion,
+                onDownloaded: { url, version in
+                    firmwareURL = url
+                    guestIOSVersion = version
+                    status = "Downloaded iOS \(version) IPSW. QEMU runtime is not connected yet."
+                },
+                deviceIdentifier: selectedDeviceIdentifier
+            )
         }
         .fileImporter(
             isPresented: $showingBundleImporter,
