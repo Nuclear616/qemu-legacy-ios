@@ -20,7 +20,7 @@ Open [Actions → Build iOS IPA](https://github.com/Nuclear616/qemu-legacy-ios/a
 
 ## Current app behavior
 
-The app displays the iPhone 4 GSM / A4 / n90ap target, allows selecting an IPSW file, and includes settings for 1/2/4/8/16/32 GiB NAND size, guest iOS version, experimental/unsigned firmware, post-jailbreak Cydia, and JIT preference. It also probes whether the host process can allocate a `MAP_JIT` mapping. These settings are not yet wired to a booting QEMU runtime; IPSW parsing, signature/boot handling, dynamic NAND creation, guest boot, jailbreak and Cydia installation remain incomplete. The current UI target uses iOS 17.0 or later.
+The app displays the iPhone 4 GSM / A4 / n90ap target, can browse the IPSW.me v4 catalog for iPhone3,1 and download a selected IPSW directly from Apple's CDN into the app's Documents folder, and retains manual IPSW import as a fallback. It includes settings for 1/2/4/8/16/32 GiB NAND size, guest iOS version, experimental/unsigned firmware, post-jailbreak Cydia, and JIT preference. It also probes whether the host process can allocate a `MAP_JIT` mapping. These settings are not yet wired to a booting QEMU runtime; IPSW parsing, signature/boot handling, dynamic NAND creation, guest boot, jailbreak and Cydia installation remain incomplete. The current UI target uses iOS 17.0 or later.
 
 ## JIT and Cydia
 
