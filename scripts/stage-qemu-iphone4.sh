@@ -44,6 +44,17 @@ if [ ! -f "$ENGINE/include/openssl/bn.h" ]; then
   exit 5
 fi
 
+# QEMU's source include paths use -iquote, so the vendored compatibility
+# header must be included with quotes rather than angle brackets.
+python3 - "$ENGINE/hw/arm/ipod_touch_pke.c" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+text = p.read_text()
+text = text.replace("#include <openssl/bn.h>", '#include "openssl/bn.h"', 1)
+p.write_text(text)
+PY
+
 # The A4 board also calls into the shared iPod Touch support modules. They
 # are copied into the engine tree above, but the upstream IPAD1 Meson stanza
 # only lists the board-specific files. Register the shared implementations
