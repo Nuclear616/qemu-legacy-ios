@@ -23,6 +23,12 @@ fi
 # Stage the board and Wi-Fi sources that belong to this app's iPhone 4 profile.
 sh "$ROOT/scripts/stage-qemu-iphone4.sh"
 
+# Assert that the staged Apple crypto compatibility headers are actually
+# visible to QEMU's quoted include search before starting the expensive build.
+test -s "$ENGINE/include/openssl/aes.h"
+test -s "$ENGINE/include/openssl/bn.h"
+grep -q '#include "openssl/bn.h"' "$ENGINE/hw/arm/ipod_touch_pke.c"
+
 # The iOS SDK provides CommonCrypto, not OpenSSL headers/libraries.
 python3 "$ROOT/scripts/patch-qemu-ios-apple-aes.py" "$ENGINE/include/hw/arm/ipod_touch_aes.h"
 
