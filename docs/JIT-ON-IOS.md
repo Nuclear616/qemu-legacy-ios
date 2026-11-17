@@ -2,7 +2,7 @@
 
 ## Two separate requirements
 
-1. **Host permission:** iOS must allow this app process to create executable JIT memory. This project includes a `MAP_JIT` mapping probe in `ios/Sources/JITProbe.c` and a built-in StikJIT helper/pairing integration adapted from upstream Husk (see `scripts/vendor-stikjit.sh` and its preserved license notices).
+1. **Host permission:** iOS must allow this app process to create executable JIT memory. This project includes a `MAP_JIT` mapping probe in `ios/Sources/JITProbe.c` and a built-in StikJIT helper/pairing integration branded as Project Astra (the upstream source and license attribution are retained in the vendor notices).
 2. **QEMU TCG integration:** QEMU's translated-code cache must use Apple's supported JIT memory/write-protection mechanism. The probe alone does not make QEMU's TCG JIT work; that port is still outstanding.
 
 If JIT is unavailable, the eventual runtime must use QEMU's interpreter/soft-MMU fallback where supported. Performance may be much lower.
