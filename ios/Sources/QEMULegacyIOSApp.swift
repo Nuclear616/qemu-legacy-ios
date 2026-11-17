@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var isStarting = false
     @State private var status = "Ready to configure the guest"
     @State private var showingEngineNotice = false
+    @StateObject private var qemuRuntime = QEMURuntime()
 
     @AppStorage("guestStorageGiB") private var storageGiB = 8
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
@@ -50,6 +51,10 @@ struct ContentView: View {
             deviceIdentity
             deviceInfoStrip
             firmwareCard
+            if qemuRuntime.hasAttemptedStart {
+                QEMUDisplayView(runtime: qemuRuntime)
+                    .frame(height: 420)
+            }
             startButton
             statusMessage
             Spacer()
@@ -217,7 +222,7 @@ struct ContentView: View {
     private var statusMessage: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle")
-            Text(status)
+            Text(qemuRuntime.hasAttemptedStart ? qemuRuntime.status : status)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.footnote)
@@ -276,11 +281,11 @@ struct ContentView: View {
                 bundleURL: bundle,
                 storageGiB: storageGiB
             )
-            status = "Boot configuration prepared for \(configuration.machine). QEMU's iOS runtime is not linked into this IPA yet."
+            status = "Boot configuration prepared for \(configuration.machine)."
+            qemuRuntime.start(configuration: configuration)
         } catch {
             status = "Could not prepare QEMU boot configuration: \(error.localizedDescription)"
         }
-        showingEngineNotice = true
     }
 }
 
