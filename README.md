@@ -14,9 +14,9 @@ The copied files are pinned to upstream QEMU-iOS commit db230fe8e8e4d297724b2ecc
 
 ## Remaining upstream QEMU engine
 
-The upstream project samhenrigold/qemu-ios remains at vendor/qemu-ios as a pinned Git submodule, commit db230fe8e8e4d297724b2eccdc38bdc21876696a. It supplies the generic QEMU engine and build infrastructure while the iPhone 4-specific hardware sources are kept as ordinary copied files in this repository.
+The pinned upstream checkout at vendor/qemu-ios remains only as the generic QEMU engine (CPU/TCG, memory, device framework, and build system). The iPhone 4 board and A4 device implementation files are copied into this repository and staged over the engine source before a build. Removing the engine checkout itself would leave no generic QEMU runtime to compile; vendoring the entire QEMU engine is a separate, much larger task.
 
-Clone this repository with its engine dependency:
+Clone this repository with its generic QEMU engine dependency:
 
 ```sh
 git clone --recurse-submodules https://github.com/Nuclear616/qemu-legacy-ios.git
@@ -32,7 +32,7 @@ The upstream iPhone 4 board documentation is also copied to docs/upstream/iphone
 
 ## Build without owning a Mac
 
-The Build iOS IPA workflow runs on a GitHub-hosted macOS runner. Open **Actions → Build iOS IPA → Run workflow**. It checks out the engine dependency, invokes Xcode, packages an unsigned IPA, and uploads it as an artifact.
+The Build iOS IPA workflow runs on a GitHub-hosted macOS runner. It checks out the generic engine, stages the copied iPhone 4 sources, then invokes Xcode, packages an unsigned IPA, and uploads it as an artifact.
 
 **Current limitation:** the workflow requires an Xcode project and scheme. The repository does not yet have the native iOS app project, so the workflow deliberately stops with a clear error until that target is added. The upstream contrib/ios-app/ files are an embedding bridge, not a complete standalone Xcode app. The generated IPA is unsigned; it must be signed before normal installation.
 
