@@ -1,51 +1,72 @@
-# iPhone 4 GSM: Wi-Fi and NAND profile
+# iPhone 4 GSM: Wi-Fi and 8 GB NAND
 
 ## Wi-Fi
 
-The N90AP board profile wires the soldered Broadcom BCM4329 revision B1
+The N90AP board profile models the soldered Broadcom BCM4329 revision B1
 through the S5L8930 IOP SDIO path. Its board identity is `P=N90 V=u`, with
-the N90 firmware version and a locally administered synthetic MAC. The card
-model is shared with the SDIO transport and Broadcom full-MAC protocol code.
+the N90 firmware identity and a locally administered synthetic MAC.
 
-The pinned QEMU build fragment compiles these files under `CONFIG_IPAD1`:
+The `CONFIG_IPAD1` build registration includes the shared card and full-MAC
+models:
 
 - `hw/arm/ipod_touch_sdio.c`
 - `hw/arm/bcm_fullmac.c`
 - `hw/arm/mrvl8686.c`
 
 Their headers are vendored under `include/hw/arm` and `include/hw/net`.
-Keep the pinned `hw/arm/trace-events` entries when merging into a full QEMU
-source tree.
+The pinned `hw/arm/trace-events` entry `ipod_touch_sdio_log` must be present
+in the full QEMU source tree. The staging script adds the SDIO/full-MAC Meson
+registration for `CONFIG_IPAD1` if it is missing.
 
-Wi-Fi is enabled by default by the iPhone 4 machine. The board creates a user
-network backend named `wifi0` if none was supplied. The equivalent explicit
-launch option is:
+Wi-Fi is enabled by default by the iPhone 4 machine. When no `wifi0` netdev
+exists, the board creates a QEMU user-mode NAT backend named `wifi0`. The
+guest sees an emulated open access point named `qemu-ios`; this is not
+pass-through access to the host's physical Wi-Fi radio or arbitrary nearby
+networks. WPA/WPA2 is not claimed. The equivalent explicit machine option is:
 
 ```sh
 -M iPhone-4,wifi=on
 ```
 
-To provide a backend explicitly, use `-netdev user,id=wifi0`. The emulated
-access point is an open network named `qemu-ios`; WPA/WPA2 authentication is
-not claimed. Host user-mode networking is NATed and does not bridge the guest
-onto the host's physical LAN.
+## 8 GB NAND
 
-## Storage
+The N90 8 GB profile uses Samsung NAND ID `0xB614D5AD`: 4096 data bytes and
+12 spare bytes per page, 128 pages per block, and 4096 blocks per CE. The
+profile exposes two populated chip enables on each of the two H2FMI buses:
 
-The iPhone 4 default NAND ID is Samsung `0x7294D7EC`, the pinned iBoot-817
-16 GB part: 2 buses × 2 chip selects, 0x1038 blocks per CE, 128 pages per
-block, 8 KiB data pages plus spare bytes. The NAND directory uses
-`geometry.json` and one sparse `bus<b>-ce<c>.pages` file per chip select.
-An existing NAND image must have matching geometry and chip ID; do not mix it
-with the 8 GB `0xB614D5AD` layout.
+```
+2 buses × 2 CEs × 4096 blocks/CE × 128 pages/block × 4096 data bytes/page
+= 8,589,934,592 bytes = 8 GiB raw NAND data capacity
+```
 
-The NAND emulation is writable file-backed storage. It does not include an
-Apple NAND dump, iBoot, IPSW, or a preformatted filesystem image. Guest
-firmware assets must be supplied separately.
+Four 2 GiB dies provide the raw capacity. The N90 board sets IOP
+`nand-ce-mask=0x03` and patches the KBoot NAND node's `#ce` property to 2.
+The per-die block count and page geometry stay unchanged. iOS-usable capacity
+is lower after bad-block reserve, FTL reserve, metadata and partitions.
 
-## Status
+Create a new blank sparse NAND store (the script refuses a non-empty target
+directory):
 
-The board defaults, Wi-Fi source registration and NAND chip ID are committed.
-This is not a claim that the full generic QEMU tree has been built or that
-iOS 7.1.2 has booted with Wi-Fi. Verify SDIO enumeration, association, DHCP
-and Safari traffic in a built emulator.
+```sh
+sh scripts/create-iphone4-8gb-nand.sh /path/to/n90-8gb-nand
+```
+
+Pass it to the machine with the N90 KBoot bundle:
+
+```sh
+qemu-system-arm \
+  -M iPhone-4,kboot=/path/to/kboot.bin,nand=/path/to/n90-8gb-nand,wifi=on \
+  -serial stdio
+```
+
+The NAND store contains blank flash and must be initialized by the guest.
+It does not include Apple firmware, iBoot, a NAND dump or a preformatted
+filesystem. Supply a compatible N90 KBoot/firmware bundle separately.
+
+## Validation status
+
+These changes configure the QEMU board sources and provide an 8 GiB raw NAND
+store generator. The complete generic QEMU engine is not included in this
+repository, the iOS app scaffold does not yet launch QEMU, and this exact 8 GiB
+profile has not been built or boot-tested in this fork. A successful SwiftUI
+IPA build does not validate the C board models.
