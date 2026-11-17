@@ -4,6 +4,7 @@ struct QEMUBootConfiguration {
     let machine: String
     let arguments: [String]
     let overlayDirectory: URL
+    let startupLog: [String]
 }
 
 enum PreparedFirmwareBundleError: LocalizedError {
@@ -68,11 +69,17 @@ enum PreparedFirmwareBundleStore {
         }
     }
 
-    static func makeBootConfiguration(bundleURL: URL, storageGiB: Int) throws -> QEMUBootConfiguration {
+    static func makeBootConfiguration(bundleURL: URL, storageGiB: Int, installJailbreak: Bool = false) throws -> QEMUBootConfiguration {
         try validate(bundleURL)
         let manager = FileManager.default
         let overlay = bundleURL.appendingPathComponent("qemu-overlay", isDirectory: true)
         try manager.createDirectory(at: overlay, withIntermediateDirectories: true)
+        var startupLog = ["Prepared firmware bundle validated", "Persistent filesystem overlay created"]
+        if installJailbreak {
+            startupLog.append("Jailbreak requested — no guest jailbreak installer is integrated, so it was skipped")
+        } else {
+            startupLog.append("Jailbreak installation disabled in settings")
+        }
 
         let kboot = bundleURL.appendingPathComponent("kboot.bin").path
         let nand = bundleURL.appendingPathComponent("nand", isDirectory: true).path
@@ -84,7 +91,7 @@ enum PreparedFirmwareBundleStore {
         // The NAND geometry in a prepared bundle is authoritative. Resizing it
         // safely requires regenerating the NAND images, not changing a UI value.
         _ = storageGiB
-        return QEMUBootConfiguration(machine: "iPhone-4 (n90ap)", arguments: arguments, overlayDirectory: overlay)
+        return QEMUBootConfiguration(machine: "iPhone-4 (n90ap)", arguments: arguments, overlayDirectory: overlay, startupLog: startupLog)
     }
 
     private static func validate(_ folder: URL) throws {
