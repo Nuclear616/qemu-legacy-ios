@@ -28,6 +28,31 @@ done
 cp "$SOURCE/src/app/HuskJITHelper/HuskJITMessages.swift" "$APP/HuskJITMessages.swift"
 cp "$SOURCE/src/app/Husk/Resources/husk-jit.js" "$ROOT/ios/Resources/husk-jit.js"
 
+# Claim and validate Astra's fixed-size QEMU code cache while the helper is
+# still servicing breakpoint RPCs. Waiting only for CS_DEBUGGED is not enough:
+# the helper detaches as soon as the app sends the detach breakpoint.
+python3 - "$APP/JITSetup.swift" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = """                    readiness = Self.waitForDebugger { attached in
+                        finish(attached ? nil : "The helper did not attach within 90 seconds. "
+                                              + "Check that LocalDevVPN is connected, then try again.")
+                    }"""
+new = """                    readiness = Self.waitForDebugger { attached in
+                        guard attached else {
+                            finish("The helper did not attach within 90 seconds. Check that LocalDevVPN is connected, then try again.")
+                            return
+                        }
+                        let claimed = AstraJITMemory.prepareWhileDebuggerAttached()
+                        finish(claimed ? nil : "StikJIT attached, but Project Astra could not claim and validate its QEMU JIT memory region. Check the JIT memory log and try again.")
+                    }"""
+if old not in s:
+    raise SystemExit("Could not find Husk's built-in attach callback to integrate Astra's QEMU JIT allocator")
+p.write_text(s.replace(old, new, 1))
+PY
+
 # The helper is a separate extension process: it must not be compiled into the app.
 cp "$SOURCE/src/app/HuskJITHelper/HuskJITHelper.swift" "$HELPER/HuskJITHelper.swift"
 cp "$SOURCE/src/app/HuskJITHelper/HuskJITMessages.swift" "$HELPER/HuskJITMessages.swift"
