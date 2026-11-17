@@ -3,7 +3,7 @@
 #include "hw/core/qdev-properties.h"
 #include "hw/arm/ipod_touch_sha1.h"
 #include "qemu/log.h"
-#include <openssl/bn.h>
+#include "openssl/bn.h"
 
 /*
  * Forging an img3 signature check.
