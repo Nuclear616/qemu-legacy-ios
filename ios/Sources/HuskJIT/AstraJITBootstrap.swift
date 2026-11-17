@@ -35,7 +35,7 @@ enum JITBootstrap {
     static var isJailbroken: Bool { FileManager.default.fileExists(atPath: "/var/jb") }
 
     static var scriptBase64: String? {
-        guard let url = Bundle.main.url(forResource: "husk-jit", withExtension: "js"),
+        guard let url = Bundle.main.url(forResource: "astra-jit", withExtension: "js"),
               let script = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         return Data(script.utf8).base64EncodedString()
     }
