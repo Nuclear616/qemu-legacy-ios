@@ -20,13 +20,11 @@ targets:
     platform: iOS
     sources:
       - path: Sources
-      - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
-    sources:
-      - path: Sources
         excludes:
           - "HuskJITHelper/**"
       - path: Resources
         buildPhase: resources
+      - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
     info:
       properties:
         LSApplicationQueriesSchemes:
@@ -55,29 +53,6 @@ targets:
           - "@executable_path/Frameworks"
     dependencies:
       - target: HuskJITHelper
-
-  # The helper must be a separate process: StikJIT attaches to the main app
-  # and services the TXM breakpoint RPCs until Astra detaches.
-  HuskJITHelper:
-    type: app-extension
-    platform: iOS
-    deploymentTarget: "26.0"
-    sources:
-      - path: Sources/HuskJITHelper
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
-        INFOPLIST_FILE: Sources/HuskJITHelper/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        APPLICATION_EXTENSION_API_ONLY: YES
-        CODE_SIGN_STYLE: Automatic
-        TARGETED_DEVICE_FAMILY: "1,2"
-        LD_RUNPATH_SEARCH_PATHS:
-          - "$(inherited)"
-          - "@executable_path/../../Frameworks"
-    dependencies:
-      - framework: Frameworks/StikJIT.xcframework
-        embed: false
     postBuildScripts:
       - name: Embed StikJIT framework for helper
         script: |
@@ -107,3 +82,25 @@ targets:
             codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$DST"
           fi
         basedOnDependencyAnalysis: false
+
+  # Separate process: StikJIT attaches to the main app and services TXM traps.
+  HuskJITHelper:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources/HuskJITHelper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
+        INFOPLIST_FILE: Sources/HuskJITHelper/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../../Frameworks"
+    dependencies:
+      - framework: Frameworks/StikJIT.xcframework
+        embed: false
