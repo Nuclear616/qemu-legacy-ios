@@ -10,7 +10,7 @@ import string
 import sys
 
 path = pathlib.Path(sys.argv[1])
-current = path.read_text().strip() if path.exists() else "0.0.1"
+current = sys.argv[2] if len(sys.argv) > 2 else (path.read_text().strip() if path.exists() else "0.0.0")
 match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current)
 
 if not match:
