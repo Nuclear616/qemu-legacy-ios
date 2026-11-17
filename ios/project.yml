@@ -10,7 +10,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     GENERATE_INFOPLIST_FILE: YES
-    INFOPLIST_KEY_CFBundleDisplayName: QEMU Legacy
+    INFOPLIST_KEY_CFBundleDisplayName: Project Astra
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
 targets:
   QEMULegacyIOS:
