@@ -9,7 +9,7 @@ on:
       - "docs/**"
       - ".github/workflows/build-ipa.yml"
 permissions:
-  contents: read
+  contents: write
 jobs:
   build-ipa:
     runs-on: macos-15
@@ -88,3 +88,12 @@ jobs:
           path: QEMULegacyIOS-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+      - name: Publish IPA GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-build-${{ github.run_number }}
+          name: "QEMU Legacy iOS IPA build ${{ github.run_number }}"
+          prerelease: true
+          generate_release_notes: true
+          files: QEMULegacyIOS-unsigned.ipa
+          fail_on_unmatched_files: true
