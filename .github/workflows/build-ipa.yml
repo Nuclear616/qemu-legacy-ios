@@ -70,7 +70,7 @@ jobs:
       - name: Vendor Astra built-in StikJIT and build iOS pairing library
         run: |
           set -euo pipefail
-          bash scripts/vendor-husk-stikjit.sh
+          bash scripts/vendor-stikjit.sh
           test -s ios/build/lib/libastra_rppairing.a
           test -s ios/Frameworks/StikJIT.xcframework/ios-arm64/StikJIT.framework/StikJIT
           test -s ios/Resources/astra-jit.js
