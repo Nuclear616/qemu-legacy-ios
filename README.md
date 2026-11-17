@@ -6,7 +6,7 @@ Experimental iOS front end and porting effort targeting the **iPhone 4 GSM (n90a
 
 ## iPhone 4 / A4 source
 
-The repository contains copied iPhone 4 board and A4 peripheral sources in `vendor/qemu-iphone4/`, pinned to upstream QEMU-iOS commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. The shared `ipad1.c` source defines the distinct GSM iPhone 4 `a4_n90` profile; select it as `-M iPhone-4` (not `-M ipad1`). The source set includes S5L8930 devices, shared A4-generation peripherals, NAND/NOR and iBoot support, plus the adjacent models referenced by the pinned `CONFIG_IPAD1` build registration. The N90 profile enables BCM4329 Wi-Fi and an 8 GiB raw NAND configuration (four 2 GiB dies); see [Wi-Fi and storage configuration](docs/WIFI-AND-STORAGE.md) and the [8 GB NAND generator](scripts/create-iphone4-8gb-nand.sh). See [QEMU source integration](docs/QEMU-SOURCE-INTEGRATION.md) for the machine-profile distinction and staging details.
+The repository contains copied iPhone 4 board and A4 peripheral sources in `vendor/qemu-iphone4/`, sourced from upstream QEMU-iOS commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. The shared `ipad1.c` source defines the distinct GSM iPhone 4 `a4_n90` profile; select it as `-M iPhone-4` (not `-M ipad1`). The source set includes S5L8930 devices, shared A4-generation peripherals, NAND/NOR and iBoot support, plus the adjacent models referenced by the pinned `CONFIG_IPAD1` build registration. The N90 profile enables BCM4329 Wi-Fi and an 8 GiB raw NAND configuration (four 2 GiB dies); see [Wi-Fi and storage configuration](docs/WIFI-AND-STORAGE.md) and the [8 GB NAND generator](scripts/create-iphone4-8gb-nand.sh). See [QEMU source integration](docs/QEMU-SOURCE-INTEGRATION.md) for the machine-profile distinction and staging details.
 
 Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/podium-a4/`. Attribution and compatibility notes are in `docs/PODIUM-A4-REUSE.md`.
 
@@ -14,7 +14,7 @@ Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/pod
 
 ## Build an unsigned IPA
 
-The GitHub Actions workflow checks out the pinned QEMU-iOS engine submodule, uses XcodeGen to generate the current SwiftUI project from `ios/project.yml`, builds the app for iOS device, packages an unsigned IPA, and uploads it as `Project-Astra-unsigned-ipa`. The workflow now attempts to cross-build the QEMU engine for the iOS device SDK and embed it in the IPA; this engine build is still under CI validation.
+The GitHub Actions workflow checks out the pinned QEMU-iOS engine submodule, uses XcodeGen to generate the SwiftUI project from `ios/project.yml`, and attempts to cross-build the engine for the iOS device SDK before packaging an unsigned IPA. The combined engine/IPA pipeline is experimental and must pass CI before the resulting package can be considered complete.
 
 Open [Actions → Build iOS IPA](https://github.com/Nuclear616/qemu-legacy-ios/actions/workflows/build-ipa.yml), choose a successful run, and download the artifact. The IPA is unsigned and must be signed before installation.
 
@@ -28,6 +28,8 @@ Host JIT on iOS 27.0.1 is separate from guest iOS 7.1.2 compatibility. The app i
 
 Cydia can only be installed inside a booted guest after a compatible jailbreak/bootstrap is applied. No Apple firmware, iBoot binary, NAND dump, IPSW, jailbreak payload or Cydia package is included.
 
-## Licensing
+## Credits and licensing
 
-QEMU-derived sources retain upstream notices in `vendor/qemu-iphone4/upstream/`. Podium-derived files are attributed in `docs/PODIUM-A4-REUSE.md`. Preserve all applicable upstream licenses.
+Project Astra is created and maintained by **Nuclear616**. See [AUTHORS.md](AUTHORS.md) for project and upstream credits, [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the license inventory and Apple firmware/device notices, and [PUBLIC-RELEASE-CHECKLIST.md](PUBLIC-RELEASE-CHECKLIST.md) before making this repository public. Project-authored code is offered under GPLv2; third-party components retain their own licenses and notices. QEMU-derived source notices are preserved in `vendor/qemu-iphone4/upstream/`.
+
+**Apple firmware is not included or relicensed here.** Do not commit or publish IPSW files, extracted firmware, boot ROMs, or device dumps unless redistribution is expressly authorized by Apple. Project Astra is not affiliated with or endorsed by Apple.
