@@ -189,7 +189,7 @@ struct EmulatorSettingsView: View {
                 Toggle("Use JIT when available", isOn: $preferJIT)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Host JIT memory")
+                        Text("Podium JIT allocator")
                         Text(jitStatus)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -199,9 +199,9 @@ struct EmulatorSettingsView: View {
                         let result = qemu_podium_jit_prepare()
                         let debugger = qemu_podium_jit_debugger_attached() == 1
                         if result == 1 {
-                            jitStatus = "Podium JIT ready (RWX MAP_JIT)"
+                            jitStatus = "Podium allocator ready (RWX). QEMU TCG not connected yet."
                         } else if result == 2 {
-                            jitStatus = "Podium JIT ready (StikDebug dual-mapped)\(debugger ? " · debugger attached" : "")"
+                            jitStatus = "Podium allocator ready (StikDebug dual-map). QEMU TCG not connected yet."
                         } else {
                             jitStatus = debugger
                                 ? "Debugger attached, but Podium JIT memory setup failed"
@@ -210,7 +210,7 @@ struct EmulatorSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("This checks whether iOS permits a MAP_JIT memory mapping. QEMU's translated-code cache still needs an iOS-specific JIT implementation. On iOS 27, external JIT activation may be required and support varies by app and signing method.")
+                Text("This uses Podium's real 64 MiB JIT allocator, including its StikDebug JIT26 dual-mapping path. It prepares executable memory, but QEMU TCG still needs to be wired to the allocator before guest code can run translated. On iOS 27, start JIT with a compatible StikDebug setup first.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
