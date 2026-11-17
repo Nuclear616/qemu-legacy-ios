@@ -25,6 +25,7 @@ targets:
       properties:
         LSApplicationQueriesSchemes:
           - stikdebug
+          - apple-magnifier
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
