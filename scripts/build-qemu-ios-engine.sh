@@ -81,7 +81,13 @@ fi
 # Only the actual iOS cross-build may see the target dependency archive.
 export PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
 export PKG_CONFIG_PATH=""
-export PKG_CONFIG_SYSROOT_DIR="$SDK"
+# The .pc files were relocated to the actual dependency prefix above. Setting
+# PKG_CONFIG_SYSROOT_DIR here makes pkg-config prepend the iPhoneOS SDK to those
+# already-absolute paths (e.g. SDK/Users/runner/...), so Meson cannot find glib.h
+# and its GLIB_SIZEOF_SIZE_T check fails. Clang gets the SDK via the cross file.
+unset PKG_CONFIG_SYSROOT_DIR
+echo "Target GLib: $(pkg-config --modversion glib-2.0)"
+echo "Target GLib cflags: $(pkg-config --cflags glib-2.0)"
 
 mkdir -p "$IOS"
 CROSS="$IOS/cross-ios-arm64.txt"
