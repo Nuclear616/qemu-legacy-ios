@@ -136,6 +136,10 @@ static inline int BN_bn2binpad(const BIGNUM *value, unsigned char *output,
         mpz_sgn(value->value) < 0) {
         return -1;
     }
+    if (mpz_sgn(value->value) == 0) {
+        memset(output, 0, (size_t)output_length);
+        return output_length;
+    }
     size_t bytes = (mpz_sizeinbase(value->value, 2) + 7) / 8;
     if (bytes > (size_t)output_length) {
         return -1;
