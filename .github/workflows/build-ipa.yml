@@ -147,7 +147,7 @@ jobs:
         if: steps.firmware.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ipa-build-${{ github.run_number }}
+          tag_name: astra-v${{ env.ASTRA_VERSION }}
           files: |
             ${{ runner.temp }}/prepared-firmware/*.zip
             ${{ runner.temp }}/prepared-firmware/SHA256SUMS
