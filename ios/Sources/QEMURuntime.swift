@@ -132,6 +132,23 @@ final class QEMURuntime: ObservableObject {
               let pixels, width > 0, height > 0 else { return }
 
         let byteCount = Int(width) * Int(height) * 4
+        // QEMU publishes an initial blank panel surface before the guest has
+        // drawn anything. Keep the Apple boot splash until a genuinely lit
+        // guest frame arrives, rather than flashing to a blank black screen.
+        if !hasReceivedFrame {
+            let bytes = pixels.assumingMemoryBound(to: UInt8.self)
+            var litSamples = 0
+            var samples = 0
+            for offset in stride(from: 0, to: byteCount, by: 256) {
+                if bytes[offset] > 24 || bytes[offset + 1] > 24 || bytes[offset + 2] > 24 {
+                    litSamples += 1
+                }
+                samples += 1
+            }
+            if litSamples * 64 <= (Int(width) * Int(height)) / 100 {
+                return
+            }
+        }
         let data = Data(bytes: pixels, count: byteCount)
         guard let provider = CGDataProvider(data: data as CFData) else { return }
         let bitmapInfo = CGBitmapInfo(rawValue:
