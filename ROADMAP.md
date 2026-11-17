@@ -44,8 +44,10 @@ Items remain incomplete until implemented and tested.
 
 ## Host JIT
 
-- [ ] Determine a supported JIT path for iOS 27.0.1.
-- [ ] Detect JIT availability at runtime and provide interpreter fallback.
+- [x] Add a `MAP_JIT` host memory capability probe and a user preference to use JIT when available.
+- [ ] Determine a supported JIT activation path for this app on iOS 27.0.1.
+- [ ] Port QEMU TCG code-cache allocation/write-protection to Apple's iOS JIT API.
+- [ ] Detect active QEMU JIT execution at runtime and provide interpreter fallback.
 - [ ] Verify on physical hardware.
 
 ## Current validation
@@ -61,5 +63,5 @@ Items remain incomplete until implemented and tested.
 | IPA workflow | Successful unsigned scaffold build |
 | iPhone 4 / iOS 7.1.2 boot | Not tested |
 | Cydia | Deferred until guest boot and jailbreak/bootstrap |
-| Host JIT on iOS 27.0.1 | Not tested |
+| Host JIT on iOS 27.0.1 | `MAP_JIT` probe added; physical-device result and QEMU TCG integration not tested |
 | Signed IPA | Not built |
