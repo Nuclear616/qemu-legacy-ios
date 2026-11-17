@@ -703,7 +703,6 @@ config IPAD1
     bool
     select PL192
     select IPOD_TOUCH_USB
-    select IPOD_TOUCH_2G # shared SDIO/BCM4329 Wi-Fi card model
     select EXYNOS4
     select IOS_BASEBAND
 
