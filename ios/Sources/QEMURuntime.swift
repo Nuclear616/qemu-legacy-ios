@@ -44,7 +44,8 @@ final class QEMURuntime: ObservableObject {
         }
 
         guard let handle = dlopen(libraryURL.path, RTLD_NOW | RTLD_LOCAL) else {
-            status = "Could not load QEMU engine: \(String(cString: dlerror()))"
+            let detail = dlerror().map { String(cString: $0) } ?? "unknown dynamic-loader error"
+            status = "Could not load QEMU engine: \(detail)"
             return
         }
         libraryHandle = handle
