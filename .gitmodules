@@ -1,0 +1,3 @@
+[submodule "vendor/qemu-engine"]
+	path = vendor/qemu-engine
+	url = https://github.com/samhenrigold/qemu-ios.git
