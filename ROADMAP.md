@@ -6,6 +6,8 @@ Items remain incomplete until implemented and tested.
 
 - [x] Copy iPhone 4 GSM/A4 board and peripheral source files into `vendor/qemu-iphone4/`.
 - [x] Copy additional S5L8920-era peripheral models and dependency headers.
+- [x] Add remaining source files referenced by the pinned `CONFIG_IPAD1` Meson registration (`s5l8950.c`, `cs42l65.c`, `cs35l19.c`, `tsl2561.c`).
+- [x] Document the shared `ipad1.c` board profiles and select the GSM iPhone 4 using `-M iPhone-4`.
 - [x] Copy selected Podium ARMv7, memory, boot and UI source files.
 - [x] Remove the upstream QEMU Git submodule link; keep board files as ordinary vendored source.
 - [x] Add a staging script for overlaying board source into a separately obtained QEMU tree.
