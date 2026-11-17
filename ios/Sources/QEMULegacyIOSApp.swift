@@ -45,8 +45,8 @@ struct ContentView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(.tint)
                 VStack(spacing: 6) {
-                    Text(cpuFamily == "A5" ? "iPhone 4S · GSM" : "iPhone 4 · GSM").font(.title2.bold())
-                    Text(cpuFamily == "A5" ? "A5 · n94ap · iOS \(guestIOSVersion)" : "A4 · n90ap · iOS \(guestIOSVersion)")
+                    Text(cpuFamily == "ARM11" ? "iPhone 3G · GSM" : (cpuFamily == "A5" ? "iPhone 4S · GSM" : "iPhone 4 · GSM")).font(.title2.bold())
+                    Text(cpuFamily == "ARM11" ? "ARM11 · N82AP · iOS \\(guestIOSVersion)" : (cpuFamily == "A5" ? "A5 · n94ap · iOS \\(guestIOSVersion)" : "A4 · n90ap · iOS \\(guestIOSVersion)"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
