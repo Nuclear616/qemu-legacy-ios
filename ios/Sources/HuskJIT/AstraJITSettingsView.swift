@@ -24,7 +24,7 @@ struct AstraJITSettingsView: View {
             }
 
             Section("Built-in StikJIT") {
-                Text("Uses Husk's embedded StikJIT helper. On iOS 27, pair this iPhone directly from Developer Mode settings. On iOS 26, import a pairing file created for this device.")
+                Text("Uses the embedded StikJIT helper. On iOS 27, pair this iPhone directly from Settings → Privacy & Security → Developer Mode → Pair with Project Astra. On iOS 26, import a pairing file created for this device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
