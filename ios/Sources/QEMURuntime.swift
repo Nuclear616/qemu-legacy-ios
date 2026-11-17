@@ -23,6 +23,8 @@ final class QEMURuntime: ObservableObject {
     @Published private(set) var frame: CGImage?
     @Published private(set) var status = "QEMU runtime has not been started."
     @Published private(set) var hasAttemptedStart = false
+    @Published private(set) var hasReceivedFrame = false
+    @Published private(set) var bootStatus = "Waiting to start…"
 
     private var libraryHandle: UnsafeMutableRawPointer?
     private var frameFunction: QemuFrameFunction?
@@ -37,6 +39,9 @@ final class QEMURuntime: ObservableObject {
             return
         }
         hasAttemptedStart = true
+        hasReceivedFrame = false
+        bootStatus = "Loading the iOS ARM64 QEMU engine…"
+        status = bootStatus
 
         guard let libraryURL = Bundle.main.privateFrameworksURL?
             .appendingPathComponent("libqemu-arm.dylib"),
@@ -51,6 +56,8 @@ final class QEMURuntime: ObservableObject {
             return
         }
         libraryHandle = handle
+        bootStatus = "Connecting the virtual display and hardware controls…"
+        status = bootStatus
 
         guard let mainSymbol = dlsym(handle, "qemu_ios_main"),
               let attachSymbol = dlsym(handle, "qemu_ios_ui_attach"),
@@ -79,7 +86,8 @@ final class QEMURuntime: ObservableObject {
         attach(callback, Unmanaged.passUnretained(self).toOpaque())
 
         didStart = true
-        status = "Starting iPhone 4 QEMU machine…"
+        bootStatus = "Starting the virtual iPhone and bootloader…"
+        status = bootStatus
         DispatchQueue.global(qos: .userInitiated).async {
             let arguments = ["qemu-system-arm"] + configuration.arguments
             let allocated = arguments.map { strdup($0) }
@@ -89,6 +97,7 @@ final class QEMURuntime: ObservableObject {
                 qemuMain(Int32(buffer.count), buffer.baseAddress)
             }
             DispatchQueue.main.async {
+                self.bootStatus = "QEMU stopped (exit code \(result))."
                 self.status = "QEMU stopped (exit code \(result)). Restart Project Astra before starting another VM."
             }
         }
@@ -134,7 +143,9 @@ final class QEMURuntime: ObservableObject {
             shouldInterpolate: false,
             intent: .defaultIntent
         )
-        status = "QEMU is running · \(width) × \(height)"
+        hasReceivedFrame = true
+        bootStatus = "Guest display active · iOS startup is in progress"
+        status = "Guest display active · \(width) × \(height)"
     }
 }
 
@@ -200,11 +211,20 @@ struct QEMUDisplayView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    Text(runtime.status)
-                        .font(.footnote)
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding()
+                    VStack(spacing: 18) {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 68, weight: .regular))
+                            .foregroundStyle(.white)
+                        ProgressView()
+                            .tint(.white)
+                        Text(runtime.bootStatus)
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black)
                 }
             }
             .contentShape(Rectangle())
