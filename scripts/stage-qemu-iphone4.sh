@@ -23,6 +23,22 @@ for subtree in hw/arm hw/misc include/hw/arm include/hw/misc; do
   fi
 done
 
+# Keep this list aligned with the pinned CONFIG_IPAD1 source registrations.
+for source in \
+  ipad1.c s5l8930_dmc.c s5l8930_pmgr.c s5l8930_gpio.c \
+  s5l8930_iop.c s5l8930_iop_core.c s5l8930_sdio.c s5l8930_i2c.c \
+  s5l8930_display.c s5l8930_dart.c s5l8930_cdma.c s5l8930_bbspi.c \
+  s5l8930_h2fmi.c s5l8930_sha1.c s5l8930_ltc4099.c s5l8930_hdq.c \
+  s5l8930_i2s.c s5l8930_isp.c s5l8940_isp.c img_topaz.c img_topaz_h264.c \
+  s5l8920.c s5l8920_pmgr.c s5l8920_dart.c s5l8920_pwm.c \
+  s5l8920_vxd.c s5l8920_vxd_h264.c s5l8920_jpeg.c \
+  s5l8950.c cs42l65.c cs35l19.c nand-image.c tsl2561.c; do
+  if [ ! -f "$ENGINE/hw/arm/$source" ]; then
+    echo "Missing staged CONFIG_IPAD1 source: hw/arm/$source" >&2
+    exit 4
+  fi
+done
+
 grep -q "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" || {
   echo "QEMU engine is missing CONFIG_IPAD1 source registration." >&2
   exit 3
@@ -33,4 +49,6 @@ grep -q "config IPAD1" "$ENGINE/hw/arm/Kconfig" || {
 }
 
 echo "Staged copied iPhone 4 GSM (n90ap/A4) sources into: $ENGINE"
+echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
+echo "Merge the pinned Kconfig/Meson fragments from $VENDOR/upstream/hw into the generic QEMU build files."
 echo "Generic QEMU dependencies and firmware images must be supplied separately."
