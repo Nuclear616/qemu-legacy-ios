@@ -7,9 +7,16 @@
 
 If JIT is unavailable, the eventual runtime must use QEMU's interpreter/soft-MMU fallback where supported. Performance may be much lower.
 
-## Supported host OS versions\n\n- **Project Astra app:** deployment target iOS 17.0+.\n- **Built-in StikJIT helper:** extension deployment target iOS 26.0+. On iOS 26, import a pairing file created for this device.\n- **On-device pairing:** iOS 27.0+; pair from Settings → Privacy & Security → Developer Mode using the Project Astra pairing host.\n- StikDebug, TrollStore and jailbreak-based JIT remain conditional on their own supported OS versions and signing/install methods.\n\n## iOS 27 note
+## Supported host OS versions
 
-JIT activation on recent iOS releases is not a normal app permission. SideStore's current guide says iOS 26.6 and iOS 27 support is limited to a small set of apps; QEMU Legacy is not among the listed apps. Therefore this project must not promise that StikDebug, SideStore or AltJIT can activate JIT for this particular build.
+- **Project Astra app:** deployment target iOS 17.0+.
+- **Built-in StikJIT helper:** extension deployment target iOS 26.0+. On iOS 26, import a pairing file created for this device.
+- **On-device pairing:** iOS 27.0+; pair from Settings → Privacy & Security → Developer Mode using the Project Astra pairing host.
+- StikDebug, TrollStore and jailbreak-based JIT remain conditional on their own supported OS versions and signing/install methods.
+
+## iOS 27 note
+
+JIT activation on recent iOS releases is not a normal app permission. SideStore's current guide says iOS 26.6 and iOS 27 support is limited to a small set of apps; Project Astra is not currently listed among the supported apps. Therefore this project must not promise that StikDebug, SideStore or AltJIT can activate JIT for this particular build.
 
 For supported apps and OS versions, consult the current [SideStore JIT guide](https://docs.sidestore.io/docs/advanced/jit) and [AltJIT guide](https://faq.altstore.io/altstore-classic/enabling-jit/altjit). Those tools attach a debugger / enable JIT externally; an ordinary app cannot reliably turn on JIT for itself.
 
