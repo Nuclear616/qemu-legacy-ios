@@ -25,7 +25,7 @@ bool podium_jit_debugger_attached(void) {
 // Command 1 prepares [x0, x0 + x1) as executable memory the process may
 // fill in (TXM won't let it otherwise); command 0 detaches the debugger.
 __attribute__((noinline, optnone, naked))
-static void jit26_prepare_region(void *address, size_t length) {
+static void jit26_prepare_region(void *, size_t) {
     // Preserve x0/x1 and use the StikJIT universal.js breakpoint ABI.
     __asm__ volatile("mov x16, #1\n"
                      "brk #0xf00d\n"
@@ -109,7 +109,7 @@ void *podium_jit_allocate(size_t size, void **writable, PodiumJITMode *mode) {
                                     mach_task_self(), (vm_address_t)executable, false,
                                     &current, &maximum, VM_INHERIT_DEFAULT);
     if (result != KERN_SUCCESS) {
-        fprintf(stderr, "[podium-jit] vm_remap writable alias failed (kr %d)\\n", result);
+        fprintf(stderr, "[podium-jit] vm_remap writable alias failed (kr %d)\n", result);
         munmap(executable, size);
         return NULL;
     }
@@ -119,7 +119,7 @@ void *podium_jit_allocate(size_t size, void **writable, PodiumJITMode *mode) {
         result = vm_protect(mach_task_self(), alias, size, false, VM_PROT_READ | VM_PROT_WRITE);
     }
     if (result != KERN_SUCCESS) {
-        fprintf(stderr, "[podium-jit] writable alias protection failed (kr %d, current %d, maximum %d)\\n",
+        fprintf(stderr, "[podium-jit] writable alias protection failed (kr %d, current %d, maximum %d)\n",
                 result, current, maximum);
         vm_deallocate(mach_task_self(), alias, size);
         munmap(executable, size);
@@ -133,14 +133,14 @@ void *podium_jit_allocate(size_t size, void **writable, PodiumJITMode *mode) {
     memcpy(&observed, executable, sizeof(observed));
     memset((void *)alias, 0, sizeof(marker));
     if (observed != marker) {
-        fprintf(stderr, "[podium-jit] writable alias validation failed (observed 0x%08x)\\n", observed);
+        fprintf(stderr, "[podium-jit] writable alias validation failed (observed 0x%08x)\n", observed);
         vm_deallocate(mach_task_self(), alias, size);
         munmap(executable, size);
         return NULL;
     }
 
     if (!guarded(detach_body, NULL, 0)) {
-        fprintf(stderr, "[podium-jit] debugger detach command failed\\n");
+        fprintf(stderr, "[podium-jit] debugger detach command failed\n");
         vm_deallocate(mach_task_self(), alias, size);
         munmap(executable, size);
         return NULL;
