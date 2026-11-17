@@ -24,6 +24,18 @@ for subtree in hw/arm hw/misc include/hw/arm include/hw/misc include/hw/net; do
   fi
 done
 
+# The iOS SDK does not include OpenSSL headers. The iPhone AES peripheral only
+# uses AES_set_{encrypt,decrypt}_key and AES_cbc_encrypt, provided by the
+# vendored CommonCrypto compatibility shim for Apple targets.
+if [ -f "$VENDOR/include/openssl/aes.h" ]; then
+  mkdir -p "$ENGINE/include/openssl"
+  cp "$VENDOR/include/openssl/aes.h" "$ENGINE/include/openssl/aes.h"
+fi
+if [ ! -f "$ENGINE/include/openssl/aes.h" ]; then
+  echo "Missing iOS AES compatibility header: include/openssl/aes.h" >&2
+  exit 5
+fi
+
 # Keep this list aligned with the pinned CONFIG_IPAD1 source registrations.
 for source in \
   ipad1.c s5l8930_dmc.c s5l8930_pmgr.c s5l8930_gpio.c \
