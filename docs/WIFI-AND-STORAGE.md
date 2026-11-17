@@ -31,7 +31,7 @@ networks. WPA/WPA2 is not claimed. The equivalent explicit machine option is:
 ## 8 GB NAND
 
 The N90 8 GB profile uses Samsung NAND ID `0xB614D5AD`: 4096 data bytes and
-12 spare bytes per page, 128 pages per block, and 4096 blocks per CE. The
+128 physical spare bytes per page, 128 pages per block, and 4096 blocks per CE. The
 profile exposes two populated chip enables on each of the two H2FMI buses:
 
 ```
