@@ -1,6 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+@_silgen_name("qemu_jit_probe")
+private func qemu_jit_probe() -> Int32
+
 @main
 struct QEMULegacyIOSApp: App {
     var body: some Scene { WindowGroup { ContentView() } }
@@ -141,6 +144,8 @@ struct EmulatorSettingsView: View {
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
+    @AppStorage("preferJIT") private var preferJIT = true
+    @State private var jitStatus = "Not checked"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
@@ -177,6 +182,33 @@ struct EmulatorSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Performance") {
+                Toggle("Use JIT when available", isOn: $preferJIT)
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Host JIT memory")
+                        Text(jitStatus)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Check") {
+                        let result = qemu_jit_probe()
+                        if result == 1 {
+                            jitStatus = "Executable JIT mapping available"
+                        } else if result == -2 {
+                            jitStatus = "MAP_JIT is unavailable in this SDK"
+                        } else {
+                            jitStatus = "Unavailable (errno \\(result))"
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Text("This checks whether iOS permits a MAP_JIT memory mapping. QEMU's translated-code cache still needs an iOS-specific JIT implementation. On iOS 27, external JIT activation may be required and support varies by app and signing method.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Jailbreak & packages") {
                 Toggle("Install Cydia after jailbreak", isOn: $installCydia)
                 Text("Cydia requires a compatible jailbreak and bootstrap inside the guest. This option saves your preference; automatic jailbreak and package installation are not implemented yet.")
@@ -185,7 +217,7 @@ struct EmulatorSettingsView: View {
             }
 
             Section {
-                Text("These are saved configuration preferences. They will not change emulator behavior until the QEMU runtime, firmware preparation and guest setup pipeline are connected.")
+                Text("Storage, firmware, unsigned-boot and Cydia settings are saved preferences. JIT availability is probed on the host, but QEMU is not yet linked and these settings are not yet applied to a running guest.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
