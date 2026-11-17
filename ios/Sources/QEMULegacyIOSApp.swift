@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var showingEngineNotice = false
 
     @AppStorage("guestStorageGiB") private var storageGiB = 8
-    @AppStorage("installCydiaAfterJailbreak") private var installCydia = false
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
@@ -150,7 +149,7 @@ struct EmulatorSettingsView: View {
         Form {
             Section("Guest device") {
                 Picker("NAND storage", selection: $storageGiB) {
-                    ForEach(storageOptions, id: \\.self) { size in
+                    ForEach(storageOptions, id: \.self) { size in
                         Text("\(size) GiB").tag(size)
                     }
                 }
@@ -161,7 +160,7 @@ struct EmulatorSettingsView: View {
 
             Section("Firmware") {
                 Picker("iOS version", selection: $guestIOSVersion) {
-                    ForEach(firmwareOptions, id: \\.self) { version in
+                    ForEach(firmwareOptions, id: \.self) { version in
                         Text("iOS \(version)").tag(version)
                     }
                 }
