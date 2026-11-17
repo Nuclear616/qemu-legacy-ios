@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 
 @_silgen_name("qemu_podium_jit_prepare")
 private func qemu_podium_jit_prepare() -> Int32
@@ -22,6 +23,8 @@ struct ContentView: View {
     @State private var status = "Ready to configure the guest"
     @State private var showingEngineNotice = false
     @StateObject private var qemuRuntime = QEMURuntime()
+    @State private var hostJITAvailable = false
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("guestStorageGiB") private var storageGiB = 8
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
@@ -43,6 +46,10 @@ struct ContentView: View {
             mainScreen
         }
         .preferredColorScheme(selectedColorScheme)
+        .onAppear { refreshJITAvailability() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshJITAvailability() }
+        }
     }
 
     private var mainScreen: some View {
@@ -208,15 +215,74 @@ struct ContentView: View {
 
     private var startButton: some View {
         Button {
-            startEmulator()
+            if hostJITAvailable {
+                startEmulator()
+            } else {
+                openStikDebugForJIT()
+            }
         } label: {
-            Label(isStarting ? "Starting…" : "Start Emulator", systemImage: "power")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
+            Label(
+                isStarting ? "Starting…" : (hostJITAvailable ? "Run Emulator" : "Open StikDebug"),
+                systemImage: isStarting ? "hourglass" : (hostJITAvailable ? "power" : "bolt.fill")
+            )
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
         }
         .buttonStyle(.borderedProminent)
         .disabled(isStarting)
+    }
+
+    private func refreshJITAvailability() {
+        let mode = qemu_podium_jit_prepare()
+        hostJITAvailable = mode == 1 || mode == 2
+        if hostJITAvailable {
+            status = mode == 2
+                ? "StikDebug JIT is ready (dual-mapped)."
+                : "JIT memory is ready."
+        } else {
+            status = "JIT is not enabled. Open StikDebug to enable JIT for Project Astra."
+        }
+    }
+
+    private func openStikDebugForJIT() {
+        guard let schemeURL = URL(string: "stikdebug://") else { return }
+        guard UIApplication.shared.canOpenURL(schemeURL) else {
+            status = "StikDebug is not installed. Opening its official GitHub page."
+            if let githubURL = URL(string: "https://github.com/StikDebug/StikDebug") {
+                UIApplication.shared.open(githubURL)
+            }
+            return
+        }
+
+        guard var components = URLComponents(string: "stikdebug://enable-jit") else {
+            status = "Could not create the StikDebug launch request."
+            return
+        }
+        var queryItems = [
+            URLQueryItem(name: "bundle-id", value: Bundle.main.bundleIdentifier ?? "com.nuclear616.qemulegacyios"),
+            URLQueryItem(name: "pid", value: String(getpid()))
+        ]
+        if #available(iOS 26.0, *) {
+            queryItems.append(URLQueryItem(name: "script-name", value: "universal.js"))
+        }
+        components.queryItems = queryItems
+        guard let requestURL = components.url else {
+            status = "Could not create the StikDebug JIT request."
+            return
+        }
+
+        status = "Requesting JIT from StikDebug. Return to Project Astra after it finishes."
+        UIApplication.shared.open(requestURL) { accepted in
+            if !accepted {
+                DispatchQueue.main.async {
+                    self.status = "StikDebug could not be opened. Opening its official GitHub page."
+                    if let githubURL = URL(string: "https://github.com/StikDebug/StikDebug") {
+                        UIApplication.shared.open(githubURL)
+                    }
+                }
+            }
+        }
     }
 
     private var statusMessage: some View {
