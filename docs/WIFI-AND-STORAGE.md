@@ -30,7 +30,7 @@ networks. WPA/WPA2 is not claimed. The equivalent explicit machine option is:
 
 ## 8 GB NAND
 
-The N90 8 GB profile uses Samsung NAND ID `0xB614D5AD`: 4096 data bytes and
+The N90 8 GB profile uses Hynix NAND ID `0xB614D5AD`: 4096 data bytes and
 128 physical spare bytes per page, 128 pages per block, and 4096 blocks per CE. The
 profile exposes two populated chip enables on each of the two H2FMI buses:
 
@@ -39,7 +39,9 @@ profile exposes two populated chip enables on each of the two H2FMI buses:
 = 8,589,934,592 bytes = 8 GiB raw NAND data capacity
 ```
 
-Four 2 GiB dies provide the raw capacity. The N90 board sets IOP
+Four 2 GiB dies provide the raw data-page capacity. Each sparse NAND record
+stores the full 4096-byte data area and 128-byte physical spare area; the IOP
+metadata interface consumes the first 10 spare bytes. The N90 board sets IOP
 `nand-ce-mask=0x03` and patches the KBoot NAND node's `#ce` property to 2.
 The per-die block count and page geometry stay unchanged. iOS-usable capacity
 is lower after bad-block reserve, FTL reserve, metadata and partitions.
