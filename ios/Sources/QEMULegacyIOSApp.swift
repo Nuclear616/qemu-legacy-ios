@@ -224,6 +224,7 @@ struct EmulatorSettingsView: View {
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
     @AppStorage("enableDRAv6") private var enableDRAv6 = false
     @AppStorage("draBlobMode") private var draBlobMode = "import"
+    @AppStorage("prepareIOS613OTA") private var prepareIOS613OTA = false
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
@@ -248,6 +249,27 @@ struct EmulatorSettingsView: View {
                 Text("Changes the requested virtual NAND capacity. Existing guest data may not fit if you reduce the size.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("iOS 6.1.3 OTA downgrade") {
+                if cpuFamily == "A5" {
+                    Toggle("Prepare iOS 6.1.3 OTA downgrade", isOn: $prepareIOS613OTA)
+                    Text("Supported for the iPhone 4S (A5). This uses the signed iOS 6.1.3 OTA restore path; changing SystemVersion.plist alone is not enough. The actual restore still requires the Legacy iOS Kit host workflow and a compatible physical-device connection.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if prepareIOS613OTA {
+                        Label("A5 / iPhone 4S is an eligible OTA target. This preference is saved, but restore execution is not integrated into this iOS app.", systemImage: "checkmark.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.green)
+                    }
+                } else {
+                    Label("Not supported: iPhone 4 (A4) is not listed for the iOS 6.1.3 OTA downgrade.", systemImage: "xmark.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("The iPhone 4 GSM has a separate downgrade route (for example, powdersn0w with the required compatible blobs); it must not use the iPhone 4S OTA procedure.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             if cpuFamily == "A5" {
