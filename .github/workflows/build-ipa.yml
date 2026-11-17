@@ -5,6 +5,8 @@ on:
     paths:
       - "ios/**"
       - "vendor/**"
+      - "scripts/**"
+      - "docs/**"
       - ".github/workflows/build-ipa.yml"
 permissions:
   contents: read
@@ -20,6 +22,41 @@ jobs:
           xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Validate 8 GB NAND preset
+        run: |
+          set -euo pipefail
+          NAND_DIR="$RUNNER_TEMP/n90-8gb-nand-test"
+          sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"
+          python3 - "$NAND_DIR" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          g = json.loads((root / "geometry.json").read_text())
+          assert g == {
+              "storage_format": "nand-xor-ff-v2",
+              "chip_id": "b614d5ad",
+              "buses": 2,
+              "ce_per_bus": 2,
+              "blocks_per_ce": 4096,
+              "pages_per_block": 128,
+              "page_bytes": 4096,
+              "spare_bytes": 12,
+          }
+          pages_per_ce = g["blocks_per_ce"] * g["pages_per_block"]
+          expected_file_size = pages_per_ce * (g["page_bytes"] + g["spare_bytes"])
+          expected_capacity = g["buses"] * g["ce_per_bus"] * pages_per_ce * g["page_bytes"]
+          assert expected_capacity == 8 * 1024**3
+          files = sorted(root.glob("bus*-ce*.pages"))
+          assert len(files) == 4
+          assert all(p.stat().st_size == expected_file_size for p in files)
+          print(f"Verified {expected_capacity} bytes of raw NAND data capacity")
+          PY
+          if sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"; then
+            echo "Generator should refuse to overwrite an existing NAND directory" >&2
+            exit 1
+          fi
       - name: Generate project
         run: xcodegen generate --spec ios/project.yml --project ios
       - name: Build unsigned app
