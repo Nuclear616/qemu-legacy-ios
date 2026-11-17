@@ -1,30 +1,30 @@
-#include <errno.h>
 #include <stddef.h>
-#include <sys/mman.h>
-#include <unistd.h>
+#include <stdbool.h>
 
-/*
- * Probe whether this process can allocate an executable JIT mapping.
- * This is only a host capability probe; it does not prove that QEMU's TCG
- * code cache has been ported to Apple's MAP_JIT write-protection API.
- */
-int qemu_jit_probe(void) {
-#if defined(__APPLE__) && defined(MAP_JIT)
-    long page_size = sysconf(_SC_PAGESIZE);
-    if (page_size <= 0) {
-        return errno ? errno : -1;
+/* Reuse Podium's actual iOS JIT allocator, including its StikDebug JIT26
+ * debugger handshake and dual-mapped executable/writable memory path. */
+#include "../../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.h"
+
+static void *qemu_jit_executable_region;
+static void *qemu_jit_writable_region;
+static PodiumJITMode qemu_jit_mode = PodiumJITModeNone;
+
+/* Allocate the same 64 MiB persistent code region used by Podium.
+ * Keep it for the process lifetime; the QEMU TCG code cache must be wired
+ * to these addresses before translated guest code can execute. */
+int qemu_podium_jit_prepare(void) {
+    if (qemu_jit_executable_region) return (int)qemu_jit_mode;
+    qemu_jit_executable_region = podium_jit_allocate(
+        64u * 1024u * 1024u, &qemu_jit_writable_region, &qemu_jit_mode);
+    if (!qemu_jit_executable_region || !qemu_jit_writable_region) {
+        qemu_jit_executable_region = NULL;
+        qemu_jit_writable_region = NULL;
+        qemu_jit_mode = PodiumJITModeNone;
+        return -1;
     }
+    return (int)qemu_jit_mode;
+}
 
-    void *region = mmap(NULL, (size_t)page_size,
-                        PROT_READ | PROT_WRITE | PROT_EXEC,
-                        MAP_PRIVATE | MAP_ANON | MAP_JIT, -1, 0);
-    if (region == MAP_FAILED) {
-        return errno ? errno : -1;
-    }
-
-    (void)munmap(region, (size_t)page_size);
-    return 1;
-#else
-    return -2;
-#endif
+int qemu_podium_jit_debugger_attached(void) {
+    return podium_jit_debugger_attached() ? 1 : 0;
 }
