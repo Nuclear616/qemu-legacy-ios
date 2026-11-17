@@ -18,6 +18,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Verify QEMU-iOS engine source
+        run: |
+          set -euo pipefail
+          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-entry.c
+          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-ui.c
+          test -f vendor/qemu-engine/docs/n90/README.md
+          ENGINE_SHA="$(git -C vendor/qemu-engine rev-parse HEAD)"
+          echo "QEMU-iOS engine checked out at $ENGINE_SHA"
+          test "$ENGINE_SHA" = "db230fe8e8e4d297724b2eccdc38bdc21876696a"
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
