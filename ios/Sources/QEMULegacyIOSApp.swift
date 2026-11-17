@@ -1,8 +1,11 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-@_silgen_name("qemu_jit_probe")
-private func qemu_jit_probe() -> Int32
+@_silgen_name("qemu_podium_jit_prepare")
+private func qemu_podium_jit_prepare() -> Int32
+
+@_silgen_name("qemu_podium_jit_debugger_attached")
+private func qemu_podium_jit_debugger_attached() -> Int32
 
 @main
 struct QEMULegacyIOSApp: App {
@@ -193,13 +196,16 @@ struct EmulatorSettingsView: View {
                     }
                     Spacer()
                     Button("Check") {
-                        let result = qemu_jit_probe()
+                        let result = qemu_podium_jit_prepare()
+                        let debugger = qemu_podium_jit_debugger_attached() == 1
                         if result == 1 {
-                            jitStatus = "Executable JIT mapping available"
-                        } else if result == -2 {
-                            jitStatus = "MAP_JIT is unavailable in this SDK"
+                            jitStatus = "Podium JIT ready (RWX MAP_JIT)"
+                        } else if result == 2 {
+                            jitStatus = "Podium JIT ready (StikDebug dual-mapped)\(debugger ? " · debugger attached" : "")"
                         } else {
-                            jitStatus = "Unavailable (errno \(result))"
+                            jitStatus = debugger
+                                ? "Debugger attached, but Podium JIT memory setup failed"
+                                : "JIT unavailable — start JIT with StikDebug, then check again"
                         }
                     }
                     .buttonStyle(.bordered)
