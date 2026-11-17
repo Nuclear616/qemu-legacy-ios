@@ -31,6 +31,210 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
+      - name: Build iOS ARM64 QEMU engine
+        run: |
+          set -euo pipefail
+          brew install glib pixman libslirp ninja meson pkgconf
+          bash scripts/build-qemu-ios-engine.sh
+          test -s ios/Frameworks/libqemu-arm.dylib
+          lipo -verify_arch arm64 ios/Frameworks/libqemu-arm.dylib
+          nm -gU ios/Frameworks/libqemu-arm.dylib | grep -q ' _qemu_ios_main      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Validate 8 GB NAND preset
+        run: |
+          set -euo pipefail
+          NAND_DIR="$RUNNER_TEMP/n90-8gb-nand-test"
+          sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"
+          python3 - "$NAND_DIR" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          g = json.loads((root / "geometry.json").read_text())
+          assert g == {
+              "storage_format": "nand-xor-ff-v2",
+              "chip_id": "b614d5ad",
+              "buses": 2,
+              "ce_per_bus": 2,
+              "blocks_per_ce": 4096,
+              "pages_per_block": 128,
+              "page_bytes": 4096,
+              "spare_bytes": 128,
+          }
+          pages_per_ce = g["blocks_per_ce"] * g["pages_per_block"]
+          expected_file_size = pages_per_ce * (g["page_bytes"] + g["spare_bytes"])
+          expected_capacity = g["buses"] * g["ce_per_bus"] * pages_per_ce * g["page_bytes"]
+          assert expected_capacity == 8 * 1024**3
+          files = sorted(root.glob("bus*-ce*.pages"))
+          assert len(files) == 4
+          assert all(p.stat().st_size == expected_file_size for p in files)
+          print(f"Verified {expected_capacity} bytes of raw NAND data capacity")
+          PY
+          if sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"; then
+            echo "Generator should refuse to overwrite an existing NAND directory" >&2
+            exit 1
+          fi
+      - name: Generate project
+        run: xcodegen generate --spec ios/project.yml --project ios
+      - name: Build unsigned app
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          # Bundle the real arm64 engine at the exact path QEMURuntime loads.
+          mkdir -p "$APP_PATH/Frameworks"
+          cp ios/Frameworks/libqemu-arm.dylib "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          test -s "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          lipo -verify_arch arm64 "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/Project-Astra-unsigned.ipa" Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Project-Astra-unsigned-ipa
+          path: Project-Astra-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+      - name: Download latest prepared firmware bundles
+        id: firmware
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("prepared-firmware-"))] | sort_by(.createdAt) | last | .tagName // ""')"
+          if [ -z "$TAG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No prepared firmware release exists yet; publishing the IPA by itself."
+          else
+            DEST="$RUNNER_TEMP/prepared-firmware"
+            mkdir -p "$DEST"
+            gh release download "$TAG" --pattern '*.zip' --pattern 'SHA256SUMS' --dir "$DEST"
+            test -n "$(find "$DEST" -maxdepth 1 -name '*.zip' -print -quit)"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish IPA GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-build-${{ github.run_number }}
+          name: "Project Astra IPA build ${{ github.run_number }}"
+          prerelease: true
+          generate_release_notes: true
+          files: Project-Astra-unsigned.ipa
+          fail_on_unmatched_files: true
+
+      - name: Attach prepared firmware to IPA release
+        if: steps.firmware.outputs.available == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-build-${{ github.run_number }}
+          files: |
+            ${{ runner.temp }}/prepared-firmware/*.zip
+            ${{ runner.temp }}/prepared-firmware/SHA256SUMS
+          fail_on_unmatched_files: true
+
+          nm -gU ios/Frameworks/libqemu-arm.dylib | grep -q ' _qemu_ios_ui_button      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Validate 8 GB NAND preset
+        run: |
+          set -euo pipefail
+          NAND_DIR="$RUNNER_TEMP/n90-8gb-nand-test"
+          sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"
+          python3 - "$NAND_DIR" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          g = json.loads((root / "geometry.json").read_text())
+          assert g == {
+              "storage_format": "nand-xor-ff-v2",
+              "chip_id": "b614d5ad",
+              "buses": 2,
+              "ce_per_bus": 2,
+              "blocks_per_ce": 4096,
+              "pages_per_block": 128,
+              "page_bytes": 4096,
+              "spare_bytes": 128,
+          }
+          pages_per_ce = g["blocks_per_ce"] * g["pages_per_block"]
+          expected_file_size = pages_per_ce * (g["page_bytes"] + g["spare_bytes"])
+          expected_capacity = g["buses"] * g["ce_per_bus"] * pages_per_ce * g["page_bytes"]
+          assert expected_capacity == 8 * 1024**3
+          files = sorted(root.glob("bus*-ce*.pages"))
+          assert len(files) == 4
+          assert all(p.stat().st_size == expected_file_size for p in files)
+          print(f"Verified {expected_capacity} bytes of raw NAND data capacity")
+          PY
+          if sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"; then
+            echo "Generator should refuse to overwrite an existing NAND directory" >&2
+            exit 1
+          fi
+      - name: Generate project
+        run: xcodegen generate --spec ios/project.yml --project ios
+      - name: Build unsigned app
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/Project-Astra-unsigned.ipa" Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Project-Astra-unsigned-ipa
+          path: Project-Astra-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+      - name: Download latest prepared firmware bundles
+        id: firmware
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("prepared-firmware-"))] | sort_by(.createdAt) | last | .tagName // ""')"
+          if [ -z "$TAG" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No prepared firmware release exists yet; publishing the IPA by itself."
+          else
+            DEST="$RUNNER_TEMP/prepared-firmware"
+            mkdir -p "$DEST"
+            gh release download "$TAG" --pattern '*.zip' --pattern 'SHA256SUMS' --dir "$DEST"
+            test -n "$(find "$DEST" -maxdepth 1 -name '*.zip' -print -quit)"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish IPA GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-build-${{ github.run_number }}
+          name: "Project Astra IPA build ${{ github.run_number }}"
+          prerelease: true
+          generate_release_notes: true
+          files: Project-Astra-unsigned.ipa
+          fail_on_unmatched_files: true
+
+      - name: Attach prepared firmware to IPA release
+        if: steps.firmware.outputs.available == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-build-${{ github.run_number }}
+          files: |
+            ${{ runner.temp }}/prepared-firmware/*.zip
+            ${{ runner.temp }}/prepared-firmware/SHA256SUMS
+          fail_on_unmatched_files: true
+
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Validate 8 GB NAND preset
