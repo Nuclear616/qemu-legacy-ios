@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION_FILE="$ROOT/VERSION"
-python3 - "$VERSION_FILE" <<'PY'
+python3 - "$VERSION_FILE" "${1:-}" <<'PY'
 import pathlib
 import re
 import secrets
