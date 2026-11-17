@@ -85,6 +85,8 @@ cp "$SOURCE/src/rppairing-ios/notices.py" "$VENDOR/src/notices.py"
 rm -rf "$VENDOR/src/src"
 cp -R "$SOURCE/src/rppairing-ios/src" "$VENDOR/src/src"
 cp "$SOURCE/src/app/Husk/Resources/legal/LICENSE-StikJIT-MPL-2.0.txt" "$VENDOR/LICENSE-StikJIT-MPL-2.0.txt"
+cp "$SOURCE/LICENSE" "$ROOT/ios/Resources/LICENSE-Husk-GPL-2.0-or-later.txt"
+cp "$SOURCE/src/app/Husk/Resources/legal/LICENSE-StikJIT-MPL-2.0.txt" "$ROOT/ios/Resources/LICENSE-StikJIT-MPL-2.0.txt"
 
 if ! command -v rustup >/dev/null 2>&1; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
