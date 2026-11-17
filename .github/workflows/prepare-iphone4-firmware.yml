@@ -141,7 +141,8 @@ jobs:
               --id "$ENTRY_ID" \
               --ipsw "$IPSW_FILE" \
               --out "$OUT" \
-              --guest-tools "$RESOURCES/guest-tools"
+              --guest-tools "$RESOURCES/guest-tools" \
+              --skip-setup
 
             test -s "$OUT/kboot.bin"
             test -d "$OUT/nand"
