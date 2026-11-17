@@ -26,8 +26,8 @@ Items remain incomplete until implemented and tested.
 - [ ] Link the iOS-targeted QEMU engine and app-facing C ABI to the app.
 - [ ] Add a Swift/Objective-C bridge for display, touch, lifecycle and storage.
 - [ ] Connect the Start action to the emulator runtime.
-- [ ] Add machine, memory, CPU and storage configuration.
-- [ ] Add optional user-supplied jailbreak/bootstrap import for Cydia after guest boot.
+- [x] Add settings UI for NAND capacity, guest iOS version, experimental/unsigned firmware and post-jailbreak Cydia preference (preferences only; not yet wired to runtime).\n- [ ] Apply selected storage capacity to NAND creation and machine configuration.
+- [ ] Implement firmware compatibility checks and experimental unsigned-boot path; UI toggle does not bypass signature checks.\n- [ ] Add optional user-supplied jailbreak/bootstrap import for Cydia after guest boot and implement Cydia package installation.
 
 ## GitHub Actions / IPA
 
