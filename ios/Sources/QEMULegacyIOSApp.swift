@@ -24,6 +24,8 @@ struct ContentView: View {
     @State private var showingEngineNotice = false
     @State private var showingEmulatorWindow = false
     @StateObject private var qemuRuntime = QEMURuntime()
+    @StateObject private var jitCoordinator = JITCoordinator.shared
+    @State private var showingJITSettings = false
     @State private var hostJITAvailable = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -34,7 +36,6 @@ struct ContentView: View {
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
     @AppStorage("appAppearance") private var appAppearance = "system"
     @AppStorage("installCydiaAfterJailbreak") private var installJailbreak = false
-    @AppStorage("jitMethod") private var jitMethod = "automatic"
 
     private var selectedColorScheme: ColorScheme? {
         switch appAppearance {
@@ -50,6 +51,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(selectedColorScheme)
         .onAppear { refreshJITAvailability() }
+        .onReceive(jitCoordinator.$attachGeneration) { _ in refreshJITAvailability() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshJITAvailability() }
         }
@@ -79,6 +81,10 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Emulator Settings")
             }
+        }
+        .sheet(isPresented: $showingJITSettings) {
+            NavigationStack { AstraJITSettingsView() }
+                .preferredColorScheme(selectedColorScheme)
         }
         .sheet(isPresented: $showingEmulatorWindow) {
             EmulatorPopupView(runtime: qemuRuntime)
@@ -251,34 +257,12 @@ struct ContentView: View {
     }
 
     private func enableJITUsingSelectedMethod() {
-        let stikDebugURL = URL(string: "stikdebug://")!
-        let trollStoreURL = URL(string: "apple-magnifier://")!
-        switch jitMethod {
-        case "stikdebug":
-            openStikDebugForJIT()
-        case "trollstore":
-            guard UIApplication.shared.canOpenURL(trollStoreURL) else {
-                status = "TrollStore was not detected. Install Project Astra through TrollStore and enable its URL scheme, or choose another JIT method."
-                return
-            }
-            if let url = URL(string: "apple-magnifier://enable-jit") {
-                status = "Requesting JIT from TrollStore. Return to Project Astra and check JIT."
-                UIApplication.shared.open(url) { accepted in
-                    if !accepted { DispatchQueue.main.async { self.status = "TrollStore did not accept the JIT request." } }
-                }
-            }
-        case "builtin":
-            status = "Built-in StikJIT is not integrated in this Project Astra build yet. It requires the StikJIT helper extension, pairing support, and LocalDevVPN. Developer Mode alone cannot enable JIT."
-        default:
-            if UIApplication.shared.canOpenURL(stikDebugURL) {
-                openStikDebugForJIT()
-            } else if UIApplication.shared.canOpenURL(trollStoreURL) {
-                jitMethod = "trollstore"
-                enableJITUsingSelectedMethod()
-            } else {
-                status = "No supported JIT provider was detected. Install StikDebug, use TrollStore on a supported iOS version, or select another method."
-            }
+        jitCoordinator.enable()
+        if jitCoordinator.showSetup {
+            showingJITSettings = true
+            jitCoordinator.showSetup = false
         }
+        status = jitCoordinator.error ?? jitCoordinator.status ?? "Requesting JIT. Follow the instructions in the JIT settings if prompted."
     }
 
     private func openStikDebugForJIT() {
@@ -324,7 +308,7 @@ struct ContentView: View {
     private var statusMessage: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "info.circle")
-            Text(qemuRuntime.hasAttemptedStart ? qemuRuntime.status : status)
+            Text(qemuRuntime.hasAttemptedStart ? qemuRuntime.status : (jitCoordinator.error ?? jitCoordinator.status ?? status))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.footnote)
@@ -400,7 +384,6 @@ struct EmulatorSettingsView: View {
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("preferJIT") private var preferJIT = true
-    @AppStorage("jitMethod") private var jitMethod = "automatic"
     @State private var jitStatus = "Not checked"
     @State private var showingSHSHImporter = false
     @State private var importedSHSHName = UserDefaults.standard.string(forKey: "importedIOS613SHSHName") ?? ""
@@ -411,18 +394,6 @@ struct EmulatorSettingsView: View {
     @AppStorage("appAppearance") private var appAppearance = "system"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
-    private var jitMethodDescription: String {
-        switch jitMethod {
-        case "stikdebug":
-            return "Uses StikDebug's enable-jit URL handoff. Requires StikDebug, a valid pairing file, and LocalDevVPN."
-        case "trollstore":
-            return "Uses TrollStore's apple-magnifier://enable-jit handoff. Supported only on iOS versions where TrollStore can grant JIT (before iOS 26)."
-        case "builtin":
-            return "Husk-style built-in StikJIT requires a helper extension, pairing support, and LocalDevVPN. These components are not bundled in this Project Astra build yet."
-        default:
-            return "Tries StikDebug first, then TrollStore when available. Built-in StikJIT is not yet bundled."
-        }
-    }
     private var firmwareOptions: [String] {
         switch cpuFamily {
         case "S5L8900-2G": return ["3.1.3"]
@@ -564,19 +535,15 @@ struct EmulatorSettingsView: View {
             }
 
             Section("JIT & Sideload") {
-                Picker("JIT method", selection: $jitMethod) {
-                    Text("Automatic").tag("automatic")
-                    Text("StikDebug").tag("stikdebug")
-                    Text("TrollStore").tag("trollstore")
-                    Text("Built-in StikJIT").tag("builtin")
+                NavigationLink {
+                    AstraJITSettingsView()
+                } label: {
+                    Label("Configure JIT methods", systemImage: "bolt.badge.clock")
                 }
-                Text(jitMethodDescription)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
                 Toggle("Use JIT when available", isOn: $preferJIT)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("StikDebug Validator")
+                        Text("JIT memory validator")
                         Text(jitStatus)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -586,18 +553,18 @@ struct EmulatorSettingsView: View {
                         let result = qemu_podium_jit_prepare()
                         let debugger = qemu_podium_jit_debugger_attached() == 1
                         if result == 1 {
-                            jitStatus = "JIT memory validation passed (RWX). QEMU TCG is not connected yet."
+                            jitStatus = "JIT memory validation passed (RWX). QEMU TCG integration is still separate."
                         } else if result == 2 {
-                            jitStatus = "StikDebug dual-map validation passed. QEMU TCG is not connected yet."
+                            jitStatus = "Split-W^X JIT memory validation passed. QEMU TCG integration is still separate."
                         } else {
                             jitStatus = debugger
                                 ? "Debugger attached, but JIT memory validation failed"
-                                : "JIT unavailable — start JIT with StikDebug, then check again"
+                                : "JIT unavailable — choose a JIT method and enable it first"
                         }
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("StikDebug Validator checks whether the app can prepare executable JIT memory, including the StikDebug JIT26 dual-mapping path. A successful check does not mean QEMU is using JIT yet; QEMU TCG still needs to be connected to this memory. On iOS 27, start JIT with a compatible StikDebug setup before checking.")
+                Text("Built-in StikJIT uses Husk's separate helper extension and pairing flow. The memory validator checks Astra's QEMU JIT region; passing it does not by itself prove that the emulator boots.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
