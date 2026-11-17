@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: project-astra-ipa-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-ipa:
