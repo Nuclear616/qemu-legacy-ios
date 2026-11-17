@@ -555,6 +555,16 @@ struct EmulatorSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("About Project Astra") {
+                LabeledContent(
+                    "Version",
+                    value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.1"
+                )
+                Text("Build versions advance through 0.0.1–0.0.16, then roll over to the next minor version at .0. Minor versions roll over after 32, then the major version increases. After 128.32.16, versions switch to random 16-character alphanumeric IDs.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section {
                 Text("Storage, firmware, unsigned-boot and jailbreak settings are saved preferences. JIT availability is probed on the host, but QEMU is not yet linked and these settings are not yet applied to a running guest.")
                     .font(.footnote)
