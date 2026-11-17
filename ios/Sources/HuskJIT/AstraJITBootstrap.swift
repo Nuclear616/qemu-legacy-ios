@@ -1,8 +1,8 @@
 import Foundation
 import UIKit
 
-/// Small Project Astra adapter for Husk's built-in StikJIT helper.
-/// The helper runs the bundled husk-jit.js script against this process.
+/// Small Project Astra adapter for Project Astra's built-in StikJIT helper.
+/// The helper runs the bundled astra-jit.js script against this process.
 enum JITBootstrap {
     private static let csDebugged: UInt32 = 0x10000000
 
