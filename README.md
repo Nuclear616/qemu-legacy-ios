@@ -10,7 +10,7 @@ The repository contains copied iPhone 4 board and A4 peripheral sources in `vend
 
 Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/podium-a4/`. Attribution and compatibility notes are in `docs/PODIUM-A4-REUSE.md`.
 
-**The complete generic QEMU engine is not included.** The old Git submodule link has been removed. The copied board sources are ordinary files, but still need to be overlaid into a compatible generic QEMU tree or ported to a complete native Swift engine before they can run.
+**The complete QEMU-iOS source is pinned as `vendor/qemu-engine`** at upstream commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. It is source-only at present: the upstream app library build is macOS-oriented, and this repository has not yet built a QEMU library for the iOS device SDK or linked its app ABI. The copied N90 board files still need to be reconciled with the full source and compiled.
 
 ## Build an unsigned IPA
 
@@ -20,11 +20,11 @@ Open [Actions → Build iOS IPA](https://github.com/Nuclear616/qemu-legacy-ios/a
 
 ## Current app behavior
 
-The app displays the iPhone 4 GSM / A4 / n90ap target, allows selecting an IPSW file, and includes an Emulator Settings screen. Settings include 1/2/4/8/16/32 GiB NAND size, a guest iOS version selector, experimental/unsigned firmware toggles, and an option to request Cydia after jailbreak. These are currently saved UI preferences only: IPSW parsing, signature/boot handling, dynamic NAND creation, guest boot, jailbreak and Cydia installation are not implemented yet. The current UI target uses iOS 17.0 or later.
+The app displays the iPhone 4 GSM / A4 / n90ap target, allows selecting an IPSW file, and includes settings for 1/2/4/8/16/32 GiB NAND size, guest iOS version, experimental/unsigned firmware, post-jailbreak Cydia, and JIT preference. It also probes whether the host process can allocate a `MAP_JIT` mapping. These settings are not yet wired to a booting QEMU runtime; IPSW parsing, signature/boot handling, dynamic NAND creation, guest boot, jailbreak and Cydia installation remain incomplete. The current UI target uses iOS 17.0 or later.
 
 ## JIT and Cydia
 
-Host JIT on iOS 27.0.1 is separate from guest iOS 7.1.2 compatibility. The copied Podium JIT code is not integrated or verified on this host OS.
+Host JIT on iOS 27.0.1 is separate from guest iOS 7.1.2 compatibility. The app now includes a `MAP_JIT` mapping probe and a JIT preference, but QEMU's TCG code cache has not been ported to the iOS JIT write-protection API. iOS 27 JIT activation is also restricted and depends on sideloading/debugger support; see [JIT notes](docs/JIT-ON-IOS.md).
 
 Cydia can only be installed inside a booted guest after a compatible jailbreak/bootstrap is applied. No Apple firmware, iBoot binary, NAND dump, IPSW, jailbreak payload or Cydia package is included.
 
