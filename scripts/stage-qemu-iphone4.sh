@@ -32,7 +32,8 @@ for source in \
   s5l8930_i2s.c s5l8930_isp.c s5l8940_isp.c img_topaz.c img_topaz_h264.c \
   s5l8920.c s5l8920_pmgr.c s5l8920_dart.c s5l8920_pwm.c \
   s5l8920_vxd.c s5l8920_vxd_h264.c s5l8920_jpeg.c \
-  s5l8950.c cs42l65.c cs35l19.c nand-image.c tsl2561.c; do
+  s5l8950.c cs42l65.c cs35l19.c nand-image.c tsl2561.c \
+  ipod_touch_sdio.c bcm_fullmac.c mrvl8686.c; do
   if [ ! -f "$ENGINE/hw/arm/$source" ]; then
     echo "Missing staged CONFIG_IPAD1 source: hw/arm/$source" >&2
     exit 4
@@ -50,5 +51,7 @@ grep -q "config IPAD1" "$ENGINE/hw/arm/Kconfig" || {
 
 echo "Staged copied iPhone 4 GSM (n90ap/A4) sources into: $ENGINE"
 echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
+echo "The default NAND ID is Samsung 0x7294D7EC (16 GB); preserve matching DT geometry."
+echo "The BCM4329 Wi-Fi bridge is enabled by default; use wifi=on and a wifi0 netdev."
 echo "Merge the pinned Kconfig/Meson fragments from $VENDOR/upstream/hw into the generic QEMU build files."
 echo "Generic QEMU dependencies and firmware images must be supplied separately."

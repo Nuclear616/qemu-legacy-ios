@@ -1781,12 +1781,12 @@ static const VMStateDescription vmstate_s5l8930_iop = {
 
 /*
  * Samsung 0x7294D7EC: 8 KiB pages, 128 pages/block, 0x1038 blocks/CE, the
- * iBoot-817 chip table's part for the 16 GB K48 (2 buses x 2 CEs). The DT
- * nand node (#ce, #ce-blocks, #block-pages, #page-bytes, #spare-bytes,
- * device-readid) must describe the same part.
+ * iBoot-817 chip table's 16 GB part (2 buses x 2 CEs). The DT nand node
+ * (#ce, #ce-blocks, #block-pages, #page-bytes, #spare-bytes, device-readid)
+ * must describe the same part.
  */
 static const Property s5l8930_iop_properties[] = {
-    DEFINE_PROP_UINT32("nand-id", S5L8930IOPState, nand_id, 0xb614d5ad),
+    DEFINE_PROP_UINT32("nand-id", S5L8930IOPState, nand_id, 0x7294d7ec),
     DEFINE_PROP_UINT8("nand-ce-mask", S5L8930IOPState, nand_ce_mask, 0xf),
     DEFINE_PROP_STRING("nand", S5L8930IOPState, nand_dir),
     DEFINE_PROP_STRING("nand-overlay", S5L8930IOPState, overlay_dir),
