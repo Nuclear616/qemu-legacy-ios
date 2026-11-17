@@ -130,7 +130,7 @@ struct ContentView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding()
-            .navigationTitle("QEMU Legacy iOS")
+            .navigationTitle("Project Astra")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
