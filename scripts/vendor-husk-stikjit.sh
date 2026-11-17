@@ -25,6 +25,15 @@ mkdir -p "$APP" "$HELPER" "$ROOT/ios/Resources" "$ROOT/ios/Frameworks" "$VENDOR"
 for file in JITBuiltIn.swift JITPairing.swift JITSetup.swift HuskRPPairing.h; do
   cp "$SOURCE/src/app/Husk/$file" "$APP/$file"
 done
+# Brand the iOS 27 pairing host as Project Astra rather than the upstream app.
+python3 - "$APP/JITPairing.swift" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+s = s.replace('static let hostName = "Husk"', 'static let hostName = "Project Astra"', 1)
+p.write_text(s)
+PY
 cp "$SOURCE/src/app/HuskJITHelper/HuskJITMessages.swift" "$APP/HuskJITMessages.swift"
 cp "$SOURCE/src/app/Husk/Resources/husk-jit.js" "$ROOT/ios/Resources/husk-jit.js"
 
