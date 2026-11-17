@@ -39,144 +39,197 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 22) {
-                Spacer(minLength: 12)
-                Image(systemName: "iphone.gen3")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
-                VStack(spacing: 6) {
-                    Text(cpuFamily == "ARM11" ? "iPhone 3G · GSM" : (cpuFamily == "A5" ? "iPhone 4S · GSM" : "iPhone 4 · GSM")).font(.title2.bold())
-                    Text(cpuFamily == "ARM11" ? "ARM11 · N82AP · iOS \\(guestIOSVersion)" : (cpuFamily == "A5" ? "A5 · n94ap · iOS \\(guestIOSVersion)" : "A4 · n90ap · iOS \\(guestIOSVersion)"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                HStack(spacing: 18) {
-                    Label("Wi-Fi", systemImage: "wifi")
-                    Label("\(storageGiB) GiB NAND", systemImage: "internaldrive")
-                    Label("512 MiB RAM", systemImage: "memorychip")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Guest firmware", systemImage: "doc.zipper")
-                        .font(.headline)
-                    Text(firmwareURL?.lastPathComponent ?? "No IPSW selected")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    Button {
-                        showingFirmwareBrowser = true
-                    } label: {
-                        Label("Download from IPSW.me", systemImage: "arrow.down.circle")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button {
-                        showingImporter = true
-                    } label: {
-                        Label("Choose IPSW from Files", systemImage: "folder")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    Divider()
-                    Label("Prepared QEMU device", systemImage: "externaldrive.badge.checkmark")
-                        .font(.headline)
-                    Text(preparedBundleURL?.lastPathComponent ?? "No FirmwareKit device bundle imported")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    Button {
-                        showingBundleImporter = true
-                    } label: {
-                        Label("Import prepared device folder", systemImage: "folder.badge.plus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    Text("Select the FirmwareKit output folder containing kboot.bin and the nand folder. The app validates and copies it into its private storage.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
-
-                Button {
-                    startEmulator()
-                } label: {
-                    Label(isStarting ? "Starting…" : "Start Emulator", systemImage: "power")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isStarting)
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "info.circle")
-                    Text(status)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-                Spacer()
-                Text("Experimental front end · Firmware is not included")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding()
-            .navigationTitle("Project Astra")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        EmulatorSettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityLabel("Emulator Settings")
-                }
-            }
-            .sheet(isPresented: $showingFirmwareBrowser) {
-                IPSWFirmwareBrowserView(deviceIdentifier: cpuFamily == "ARM11" ? "iPhone1,2" : (cpuFamily == "A5" ? "iPhone4,1" : "iPhone3,1"), selectedVersion: guestIOSVersion) { url, version in
-                    firmwareURL = url
-                    guestIOSVersion = version
-                    status = "Downloaded iOS \\(version) IPSW. QEMU runtime is not connected yet."
-                }
-            }
-            .fileImporter(
-                isPresented: $showingBundleImporter,
-                allowedContentTypes: [.folder],
-                allowsMultipleSelection: false
-            ) { result in
-                importPreparedBundle(result)
-            }
-            .fileImporter(
-                isPresented: $showingImporter,
-                allowedContentTypes: [UTType(filenameExtension: "ipsw") ?? .data],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    firmwareURL = urls.first
-                    status = firmwareURL == nil
-                        ? "No firmware selected."
-                        : "IPSW selected. The QEMU engine still needs to be integrated."
-                case .failure(let error):
-                    status = "Could not open firmware: \(error.localizedDescription)"
-                }
-            }
-            .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak options will take effect after that runtime is integrated.")
-            }
+            mainScreen
         }
         .preferredColorScheme(selectedColorScheme)
+    }
+
+    private var mainScreen: some View {
+        VStack(spacing: 22) {
+            Spacer(minLength: 12)
+            deviceIdentity
+            deviceInfoStrip
+            firmwareCard
+            startButton
+            statusMessage
+            Spacer()
+            Text("Experimental front end · Firmware is not included")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .navigationTitle("Project Astra")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    EmulatorSettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Emulator Settings")
+            }
+        }
+        .sheet(isPresented: $showingFirmwareBrowser) {
+            IPSWFirmwareBrowserView(
+                deviceIdentifier: selectedDeviceIdentifier,
+                selectedVersion: guestIOSVersion
+            ) { url, version in
+                firmwareURL = url
+                guestIOSVersion = version
+                status = "Downloaded iOS \(version) IPSW. QEMU runtime is not connected yet."
+            }
+        }
+        .fileImporter(
+            isPresented: $showingBundleImporter,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            importPreparedBundle(result)
+        }
+        .fileImporter(
+            isPresented: $showingImporter,
+            allowedContentTypes: [UTType(filenameExtension: "ipsw") ?? .data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleIPSWImport(result)
+        }
+        .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak options will take effect after that runtime is integrated.")
+        }
+    }
+
+    private var selectedDeviceIdentifier: String {
+        switch cpuFamily {
+        case "ARM11": return "iPhone1,2"
+        case "A5": return "iPhone4,1"
+        default: return "iPhone3,1"
+        }
+    }
+
+    private var deviceIdentity: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "iphone.gen3")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+            Text(deviceTitle)
+                .font(.title2.bold())
+            Text(deviceSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var deviceTitle: String {
+        switch cpuFamily {
+        case "ARM11": return "iPhone 3G · GSM"
+        case "A5": return "iPhone 4S · GSM"
+        default: return "iPhone 4 · GSM"
+        }
+    }
+
+    private var deviceSubtitle: String {
+        switch cpuFamily {
+        case "ARM11": return "ARM11 · N82AP · iOS \(guestIOSVersion)"
+        case "A5": return "A5 · n94ap · iOS \(guestIOSVersion)"
+        default: return "A4 · n90ap · iOS \(guestIOSVersion)"
+        }
+    }
+
+    private var deviceInfoStrip: some View {
+        HStack(spacing: 18) {
+            Label("Wi-Fi", systemImage: "wifi")
+            Label("\(storageGiB) GiB NAND", systemImage: "internaldrive")
+            Label("512 MiB RAM", systemImage: "memorychip")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var firmwareCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Guest firmware", systemImage: "doc.zipper")
+                .font(.headline)
+            Text(firmwareURL?.lastPathComponent ?? "No IPSW selected")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            Button {
+                showingFirmwareBrowser = true
+            } label: {
+                Label("Download from IPSW.me", systemImage: "arrow.down.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button {
+                showingImporter = true
+            } label: {
+                Label("Choose IPSW from Files", systemImage: "folder")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+
+            Divider()
+            Label("Prepared QEMU device", systemImage: "externaldrive.badge.checkmark")
+                .font(.headline)
+            Text(preparedBundleURL?.lastPathComponent ?? "No FirmwareKit device bundle imported")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            Button {
+                showingBundleImporter = true
+            } label: {
+                Label("Import prepared device folder", systemImage: "folder.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            Text("Select the FirmwareKit output folder containing kboot.bin and the nand folder. The app validates and copies it into its private storage.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var startButton: some View {
+        Button {
+            startEmulator()
+        } label: {
+            Label(isStarting ? "Starting…" : "Start Emulator", systemImage: "power")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 5)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(isStarting)
+    }
+
+    private var statusMessage: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle")
+            Text(status)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    }
+
+    private func handleIPSWImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            firmwareURL = urls.first
+            status = firmwareURL == nil
+                ? "No firmware selected."
+                : "IPSW selected. The QEMU engine still needs to be integrated."
+        case .failure(let error):
+            status = "Could not open firmware: \(error.localizedDescription)"
+        }
     }
 
     private func importPreparedBundle(_ result: Result<[URL], Error>) {
