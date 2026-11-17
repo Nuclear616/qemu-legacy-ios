@@ -43,7 +43,7 @@ jobs:
       - name: Install archive tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq squashfs-tools zip
+          sudo apt-get install -y curl jq squashfs-tools zip libegl1 libgl1 libopengl0 libglib2.0-0 libdbus-1-3 libx11-6 libxext6 libxrender1 libxrandr2 libxfixes3 libxcursor1 libxi6 libxinerama1 libxkbcommon0 libxcb1 libxcb-xinerama0 libxcb-cursor0 libfontconfig1 libfreetype6 libsm6 libice6
 
       - name: Download FirmwareKit runtime
         run: |
