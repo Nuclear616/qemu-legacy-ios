@@ -240,7 +240,7 @@ struct IPSWFirmwareBrowserView: View {
         defer { isDownloading = false }
 
         do {
-            let downloader = IPSWDownloadDelegate { written, expected, remaining in
+            let downloader = IPSWDownloadDelegate(expectedBytes: firmware.filesize ?? 0) { written, expected, remaining in
                 self.downloadedBytes = written
                 if expected > 0 { self.totalDownloadBytes = expected }
                 let denominator = expected > 0 ? expected : self.totalDownloadBytes
@@ -277,10 +277,12 @@ private final class IPSWDownloadDelegate: NSObject, URLSessionDownloadDelegate, 
     private var continuation: CheckedContinuation<DownloadResult, Error>?
     private var session: URLSession?
     private let startedAt = Date()
+    private let expectedBytes: Int64
     private let onProgress: @MainActor @Sendable (Int64, Int64, Double?) -> Void
     private var didFinish = false
 
-    init(onProgress: @escaping @MainActor @Sendable (Int64, Int64, Double?) -> Void) {
+    init(expectedBytes: Int64, onProgress: @escaping @MainActor @Sendable (Int64, Int64, Double?) -> Void) {
+        self.expectedBytes = expectedBytes
         self.onProgress = onProgress
     }
 
@@ -302,7 +304,7 @@ private final class IPSWDownloadDelegate: NSObject, URLSessionDownloadDelegate, 
         totalBytesWritten: Int64,
         totalBytesExpectedToWrite: Int64
     ) {
-        let expected = max(0, totalBytesExpectedToWrite)
+        let expected = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : expectedBytes
         let elapsed = max(0.1, Date().timeIntervalSince(startedAt))
         let speed = Double(totalBytesWritten) / elapsed
         let remaining = expected > 0 && speed > 0
