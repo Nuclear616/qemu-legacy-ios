@@ -16,7 +16,7 @@ if [ ! -f "$ENGINE/meson.build" ] || [ ! -f "$ENGINE/hw/arm/meson.build" ]; then
   exit 2
 fi
 
-for subtree in hw/arm hw/misc include/hw/arm include/hw/misc; do
+for subtree in hw/arm hw/misc include/hw/arm include/hw/misc include/hw/net; do
   if [ -d "$VENDOR/$subtree" ]; then
     mkdir -p "$ENGINE/$subtree"
     cp -R "$VENDOR/$subtree/." "$ENGINE/$subtree/"
@@ -54,4 +54,15 @@ echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
 echo "The default NAND ID is Samsung 0x7294D7EC (16 GB); preserve matching DT geometry."
 echo "The BCM4329 Wi-Fi bridge is enabled by default; use wifi=on and a wifi0 netdev."
 echo "Merge the pinned Kconfig/Meson fragments from $VENDOR/upstream/hw into the generic QEMU build files."
+
+# Register the shared BCM4329 SDIO/full-MAC implementation exactly once.
+if ! grep -q "ipod_touch_sdio.c" "$ENGINE/hw/arm/meson.build"; then
+  printf '%s\n' "" "# QEMU Legacy iOS: BCM4329 Wi-Fi for the iPhone 4 GSM board." "arm_ss.add(when: 'CONFIG_IPAD1', if_true: files('ipod_touch_sdio.c', 'bcm_fullmac.c', 'mrvl8686.c'))" >> "$ENGINE/hw/arm/meson.build"
+fi
+
+if [ -f "$ENGINE/hw/arm/trace-events" ] && ! grep -q "ipod_touch_sdio_log" "$ENGINE/hw/arm/trace-events"; then
+  echo "QEMU trace-events is missing ipod_touch_sdio_log; merge the pinned trace-events entry." >&2
+  exit 5
+fi
+
 echo "Generic QEMU dependencies and firmware images must be supplied separately."
