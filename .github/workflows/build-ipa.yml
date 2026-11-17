@@ -1,0 +1,84 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_path:
+        description: "Path to the iOS .xcodeproj (add the app project before running)"
+        required: true
+        default: "ios/QEMULegacyIOS.xcodeproj"
+        type: string
+      scheme:
+        description: "Xcode scheme to build"
+        required: true
+        default: "QEMULegacyIOS"
+        type: string
+  push:
+    paths:
+      - "ios/**"
+      - "vendor/qemu-ios/**"
+      - ".github/workflows/build-ipa.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ipa:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Check out project and QEMU source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Verify iOS app project exists
+        env:
+          PROJECT_PATH: ${{ inputs.project_path || 'ios/QEMULegacyIOS.xcodeproj' }}
+        run: |
+          if [ ! -d "$PROJECT_PATH" ]; then
+            echo "::error::No Xcode project at '$PROJECT_PATH'. The upstream QEMU-iOS repository currently contributes emulator source and iOS bridge C files, not a complete app project. Add the native iOS app target before an IPA can be built."
+            exit 1
+          fi
+
+      - name: Build device app (unsigned)
+        env:
+          PROJECT_PATH: ${{ inputs.project_path || 'ios/QEMULegacyIOS.xcodeproj' }}
+          SCHEME: ${{ inputs.scheme || 'QEMULegacyIOS' }}
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::xcodebuild completed but no .app bundle was found."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/QEMULegacyIOS-unsigned.ipa" Payload)
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QEMULegacyIOS-unsigned-ipa
+          path: QEMULegacyIOS-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
