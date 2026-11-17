@@ -2,7 +2,7 @@
 
 Experimental iOS front end and porting effort targeting the **iPhone 4 GSM (n90ap)** and **iOS 7.1.2** guest.
 
-> **Build status:** The SwiftUI app scaffold now compiles and the GitHub Actions workflow has successfully packaged an unsigned IPA. This is not yet a working emulator: the A4 machine/CPU/boot pipeline is not connected to the app, and no guest boot has been verified.
+ > **Build status:** An earlier scaffold-only workflow packaged an unsigned IPA. The current workflow also builds the iOS QEMU engine and includes the Astra StikJIT helper, but that combined build is still being validated. This is not yet a verified working emulator: no guest boot has been confirmed.
 
 ## iPhone 4 / A4 source
 
@@ -10,7 +10,7 @@ The repository contains copied iPhone 4 board and A4 peripheral sources in `vend
 
 Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/podium-a4/`. Attribution and compatibility notes are in `docs/PODIUM-A4-REUSE.md`.
 
-**The complete QEMU-iOS source is pinned as `vendor/qemu-engine`** at upstream commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. It is source-only at present: the upstream app library build is macOS-oriented, and this repository has not yet built a QEMU library for the iOS device SDK or linked its app ABI. The copied N90 board files still need to be reconciled with the full source and compiled.
+**The complete QEMU-iOS source is pinned as `vendor/qemu-engine`** at upstream commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. A dedicated cross-build script now configures the engine for the iOS device SDK, stages the iPhone 4 board sources, and attempts to produce an embeddable `libqemu-arm.dylib`. CI has exposed toolchain/configuration issues that are being corrected; a successful engine build and guest boot have not yet been verified.
 
 ## Build an unsigned IPA
 
