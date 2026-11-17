@@ -14,7 +14,9 @@ struct QEMULegacyIOSApp: App {
 
 struct ContentView: View {
     @State private var firmwareURL: URL?
+    @State private var preparedBundleURL: URL?
     @State private var showingImporter = false
+    @State private var showingBundleImporter = false
     @State private var showingFirmwareBrowser = false
     @State private var isStarting = false
     @State private var status = "Ready to configure the guest"
@@ -71,6 +73,23 @@ struct ContentView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    Divider()
+                    Label("Prepared QEMU device", systemImage: "externaldrive.badge.checkmark")
+                        .font(.headline)
+                    Text(preparedBundleURL?.lastPathComponent ?? "No FirmwareKit device bundle imported")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Button {
+                        showingBundleImporter = true
+                    } label: {
+                        Label("Import prepared device folder", systemImage: "folder.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Text("Select the FirmwareKit output folder containing kboot.bin and the nand folder. The app validates and copies it into its private storage.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,6 +139,13 @@ struct ContentView: View {
                 }
             }
             .fileImporter(
+                isPresented: $showingBundleImporter,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: false
+            ) { result in
+                importPreparedBundle(result)
+            }
+            .fileImporter(
                 isPresented: $showingImporter,
                 allowedContentTypes: [UTType(filenameExtension: "ipsw") ?? .data],
                 allowsMultipleSelection: false
@@ -142,17 +168,44 @@ struct ContentView: View {
         }
     }
 
+    private func importPreparedBundle(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let source = urls.first else {
+                status = "No device folder selected."
+                return
+            }
+            do {
+                preparedBundleURL = try PreparedFirmwareBundleStore.importBundle(from: source)
+                status = "Prepared iPhone 4 firmware validated. KBoot and NAND are ready for the QEMU launch stage."
+            } catch {
+                preparedBundleURL = nil
+                status = "Prepared bundle rejected: \(error.localizedDescription)"
+            }
+        case .failure(let error):
+            status = "Could not import prepared device folder: \(error.localizedDescription)"
+        }
+    }
+
     private func startEmulator() {
-        guard firmwareURL != nil else {
-            status = "Choose an iOS IPSW first."
-            showingImporter = true
+        guard let bundle = preparedBundleURL else {
+            status = "Import a FirmwareKit-prepared device folder first. An IPSW by itself is not bootable."
+            showingBundleImporter = true
             return
         }
         if allowUnsignedFirmware && !allowExperimentalBoots {
             status = "Enable Experimental boots before trying unsigned firmware."
             return
         }
-        status = "Start requested with \(storageGiB) GiB storage. QEMU runtime is not connected yet."
+        do {
+            let configuration = try PreparedFirmwareBundleStore.makeBootConfiguration(
+                bundleURL: bundle,
+                storageGiB: storageGiB
+            )
+            status = "Boot configuration prepared for \(configuration.machine). QEMU's iOS runtime is not linked into this IPA yet."
+        } catch {
+            status = "Could not prepare QEMU boot configuration: \(error.localizedDescription)"
+        }
         showingEngineNotice = true
     }
 }
