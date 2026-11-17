@@ -35,6 +35,7 @@ targets:
         NSLocalNetworkUsageDescription: "Project Astra uses the local network to pair this iPhone with its built-in StikJIT helper."
         NSBonjourServices:
           - "_remotepairing-pairable-host._tcp"
+          - "_remotepairing._tcp"
         BGTaskSchedulerPermittedIdentifiers:
           - "$(PRODUCT_BUNDLE_IDENTIFIER).pairing.*"
         CFBundleURLTypes:
