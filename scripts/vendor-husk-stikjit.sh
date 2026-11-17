@@ -17,7 +17,7 @@ curl --fail --location --retry 3 --silent --show-error \
 mkdir -p "$SOURCE"
 tar -xzf "$ARCHIVE" --strip-components=1 -C "$SOURCE"
 
-APP="$ROOT/ios/Sources/HuskJIT"
+APP="$ROOT/ios/Sources/AstraJIT"
 HELPER="$ROOT/ios/Sources/AstraJITHelper"
 VENDOR="$ROOT/ios/vendor/stikjit"
 mkdir -p "$APP" "$HELPER" "$ROOT/ios/Resources" "$ROOT/ios/Frameworks" "$VENDOR"
