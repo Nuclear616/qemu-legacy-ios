@@ -49,12 +49,14 @@ final class QEMURuntime: ObservableObject {
             .appendingPathComponent("libqemu-arm.dylib"),
               FileManager.default.fileExists(atPath: libraryURL.path) else {
             status = "QEMU engine is not bundled in this IPA yet. The app now has the runtime loader and display/input bridge, but the iOS ARM64 QEMU library still needs to be built and embedded."
+            bootStatus = status
             return
         }
 
         guard let handle = dlopen(libraryURL.path, RTLD_NOW | RTLD_LOCAL) else {
             let detail = dlerror().map { String(cString: $0) } ?? "unknown dynamic-loader error"
             status = "Could not load QEMU engine: \(detail)"
+            bootStatus = status
             return
         }
         libraryHandle = handle
@@ -68,6 +70,7 @@ final class QEMURuntime: ObservableObject {
               let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
               let buttonSymbol = dlsym(handle, "qemu_ios_ui_button") else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
+            bootStatus = status
             dlclose(handle)
             libraryHandle = nil
             return
@@ -228,8 +231,8 @@ struct QEMUDisplayView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                         VStack(alignment: .leading, spacing: 5) {
-                            ForEach(Array(runtime.startupLog.enumerated()), id: \.offset) { _, item in
-                                Text("• " + item)
+                            ForEach(Array(runtime.startupLog.enumerated()), id: \.offset) { entry in
+                                Text("• " + entry.element)
                                     .font(.caption2)
                                     .foregroundStyle(.white.opacity(0.65))
                                     .multilineTextAlignment(.leading)
