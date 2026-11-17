@@ -17,6 +17,10 @@ struct ContentView: View {
                 Image(systemName: "iphone.gen3").font(.system(size: 58)).foregroundStyle(.secondary)
                 Text("iPhone 4 · GSM").font(.title2.bold())
                 Text("A4 · n90ap · iOS 7.1.2").font(.subheadline).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Label("Wi-Fi enabled", systemImage: "wifi")
+                    Label("16 GB NAND", systemImage: "internaldrive")
+                }.font(.footnote).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Guest firmware", systemImage: "doc.zipper").font(.headline)
                     Text(firmwareURL?.lastPathComponent ?? "No firmware selected").font(.footnote).foregroundStyle(.secondary).lineLimit(2)

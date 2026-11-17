@@ -8,6 +8,8 @@ Items remain incomplete until implemented and tested.
 - [x] Copy additional S5L8920-era peripheral models and dependency headers.
 - [x] Add remaining source files referenced by the pinned `CONFIG_IPAD1` Meson registration (`s5l8950.c`, `cs42l65.c`, `cs35l19.c`, `tsl2561.c`).
 - [x] Document the shared `ipad1.c` board profiles and select the GSM iPhone 4 using `-M iPhone-4`.
+- [x] Register the BCM4329 SDIO/full-MAC Wi-Fi implementation in the iPhone 4 machine build.
+- [x] Set the default NAND chip ID to Samsung 16 GB `0x7294D7EC` and document matching image geometry.
 - [x] Copy selected Podium ARMv7, memory, boot and UI source files.
 - [x] Remove the upstream QEMU Git submodule link; keep board files as ordinary vendored source.
 - [x] Add a staging script for overlaying board source into a separately obtained QEMU tree.

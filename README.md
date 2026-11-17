@@ -6,7 +6,7 @@ Experimental iOS front end and porting effort targeting the **iPhone 4 GSM (n90a
 
 ## iPhone 4 / A4 source
 
-The repository contains copied iPhone 4 board and A4 peripheral sources in `vendor/qemu-iphone4/`, pinned to upstream QEMU-iOS commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. The shared `ipad1.c` source defines the distinct GSM iPhone 4 `a4_n90` profile; select it as `-M iPhone-4` (not `-M ipad1`). The source set includes S5L8930 devices, shared A4-generation peripherals, NAND/NOR and iBoot support, plus the adjacent models referenced by the pinned `CONFIG_IPAD1` build registration. See [QEMU source integration](docs/QEMU-SOURCE-INTEGRATION.md) for the machine-profile distinction and staging details.
+The repository contains copied iPhone 4 board and A4 peripheral sources in `vendor/qemu-iphone4/`, pinned to upstream QEMU-iOS commit `db230fe8e8e4d297724b2eccdc38bdc21876696a`. The shared `ipad1.c` source defines the distinct GSM iPhone 4 `a4_n90` profile; select it as `-M iPhone-4` (not `-M ipad1`). The source set includes S5L8930 devices, shared A4-generation peripherals, NAND/NOR and iBoot support, plus the adjacent models referenced by the pinned `CONFIG_IPAD1` build registration. The board defaults to BCM4329 Wi-Fi and the Samsung 16 GB NAND profile; see [Wi-Fi and storage configuration](docs/WIFI-AND-STORAGE.md). See [QEMU source integration](docs/QEMU-SOURCE-INTEGRATION.md) for the machine-profile distinction and staging details.
 
 Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/podium-a4/`. Attribution and compatibility notes are in `docs/PODIUM-A4-REUSE.md`.
 
