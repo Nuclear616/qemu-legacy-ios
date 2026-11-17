@@ -9,7 +9,8 @@ Items remain incomplete until implemented and tested.
 - [x] Add remaining source files referenced by the pinned `CONFIG_IPAD1` Meson registration (`s5l8950.c`, `cs42l65.c`, `cs35l19.c`, `tsl2561.c`).
 - [x] Document the shared `ipad1.c` board profiles and select the GSM iPhone 4 using `-M iPhone-4`.
 - [x] Register the BCM4329 SDIO/full-MAC Wi-Fi implementation in the iPhone 4 machine build.
-- [x] Set the default NAND chip ID to Samsung 16 GB `0x7294D7EC` and document matching image geometry.
+- [x] Configure N90 as an 8 GiB raw NAND SKU using Samsung `0xB614D5AD`, two CEs per bus, and a matching KBoot `#ce` patch.
+- [x] Add a sparse blank 8 GiB NAND store generator with geometry validation and overwrite protection.
 - [x] Copy selected Podium ARMv7, memory, boot and UI source files.
 - [x] Remove the upstream QEMU Git submodule link; keep board files as ordinary vendored source.
 - [x] Add a staging script for overlaying board source into a separately obtained QEMU tree.
@@ -49,7 +50,9 @@ Items remain incomplete until implemented and tested.
 
 | Item | Status |
 |---|---|
-| iPhone 4/A4 board source | Copied; not compiled in this fork |
+| iPhone 4/A4 board source | Copied and N90 Wi-Fi/8 GiB NAND settings added; not compiled in this fork |
+| BCM4329 Wi-Fi | SDIO/full-MAC models registered; guest networking not validated in this fork |
+| 8 GiB NAND | Geometry preset and sparse-store generator added; guest formatting/boot not tested |
 | Generic QEMU engine | Not vendored; submodule removed |
 | Podium ARMv7/DBT source | Selected files copied; not integrated |
 | Native iOS app target | SwiftUI/XcodeGen scaffold |
