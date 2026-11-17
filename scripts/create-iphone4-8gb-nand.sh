@@ -61,6 +61,6 @@ capacity = (
 )
 print(f"Created blank iPhone 4 GSM NAND store: {out}")
 print(f"Raw data-page capacity: {capacity:,} bytes ({capacity / 1024**3:.0f} GiB)")
-print(f"Chip ID: 0x{geometry['chip_id']}; CEs: 2 per bus; page size: 4096 + 12 bytes")
+print(f"Chip ID: 0x{geometry['chip_id']}; CEs: 2 per bus; page layout: 4096 data + 128 spare bytes")
 print("Files are sparse; disk space is allocated as NAND pages are written.")
 PY
