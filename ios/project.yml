@@ -37,6 +37,10 @@ targets:
           - "_remotepairing-pairable-host._tcp"
         BGTaskSchedulerPermittedIdentifiers:
           - "$(PRODUCT_BUNDLE_IDENTIFIER).pairing.*"
+        CFBundleURLTypes:
+          - CFBundleURLName: "Project Astra LocalDevVPN callback"
+            CFBundleURLSchemes:
+              - husk
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
