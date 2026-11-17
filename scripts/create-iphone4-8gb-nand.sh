@@ -30,7 +30,7 @@ geometry = {
     "blocks_per_ce": 4096,
     "pages_per_block": 128,
     "page_bytes": 4096,
-    "spare_bytes": 12,
+    "spare_bytes": 128,
 }
 
 # Four 2-GiB NAND dies (two CEs on each of the two H2FMI buses) provide
