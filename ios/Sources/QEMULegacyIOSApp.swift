@@ -218,6 +218,11 @@ struct EmulatorSettingsView: View {
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("preferJIT") private var preferJIT = true
     @State private var jitStatus = "Not checked"
+    @State private var showingSHSHImporter = false
+    @State private var importedSHSHName = UserDefaults.standard.string(forKey: "importedIOS613SHSHName") ?? ""
+    @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
+    @AppStorage("enableDRAv6") private var enableDRAv6 = false
+    @AppStorage("draBlobMode") private var draBlobMode = "import"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
@@ -225,6 +230,15 @@ struct EmulatorSettingsView: View {
     var body: some View {
         Form {
             Section("Guest device") {
+                Picker("CPU / device family", selection: $cpuFamily) {
+                    Text("A4 · iPhone 4").tag("A4")
+                    Text("A5 · iPhone 4S (experimental)").tag("A5")
+                }
+                if cpuFamily == "A5" {
+                    Label("A5 / iPhone 4S is an experimental target. The current QEMU build only has the iPhone 4 A4 machine; selecting A5 does not add A5 emulation.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
                 Picker("NAND storage", selection: $storageGiB) {
                     ForEach(storageOptions, id: \.self) { size in
                         Text("\(size) GiB").tag(size)
@@ -233,6 +247,43 @@ struct EmulatorSettingsView: View {
                 Text("Changes the requested virtual NAND capacity. Existing guest data may not fit if you reduce the size.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            if cpuFamily == "A5" {
+                Section("DRA v6 · iOS 6 restore") {
+                    Toggle("Use DRA v6 workflow", isOn: $enableDRAv6)
+                    if enableDRAv6 {
+                        Picker("SHSH blob setup", selection: $draBlobMode) {
+                            Text("Import iOS 6.1.3 blobs").tag("import")
+                            Text("Manual preparation").tag("manual")
+                        }
+                        if draBlobMode == "import" {
+                            Button {
+                                showingSHSHImporter = true
+                            } label: {
+                                Label(importedSHSHName.isEmpty ? "Import iOS 6.1.3 SHSH blobs" : "Replace imported blobs", systemImage: "doc.badge.plus")
+                            }
+                            if !importedSHSHName.isEmpty {
+                                Label(importedSHSHName, systemImage: "checkmark.doc")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Text("Manual preparation can be selected here, but DRA v6 itself runs as a restore exploit on a compatible physical iPhone 4S. It cannot be run inside this emulator. You will still need the device-specific iOS 6.1.3 SHSH data for a restore workflow.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text("DRA v6 is a physical-device restore method, not an A5 QEMU boot feature. This setting records your preferred workflow only; DRA v6 restore integration is not implemented.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Section("DRA v6") {
+                    Text("Choose A5 · iPhone 4S above to reveal the DRA v6 options.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Firmware") {
@@ -301,5 +352,33 @@ struct EmulatorSettingsView: View {
         }
         .navigationTitle("Emulator Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .fileImporter(
+            isPresented: $showingSHSHImporter,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let source = urls.first else { return }
+                let accessing = source.startAccessingSecurityScopedResource()
+                defer { if accessing { source.stopAccessingSecurityScopedResource() } }
+                do {
+                    let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    let ext = source.pathExtension.isEmpty ? "shsh" : source.pathExtension
+                    let destination = documents.appendingPathComponent("ios-6.1.3-imported-blobs.\(ext)")
+                    if FileManager.default.fileExists(atPath: destination.path) {
+                        try FileManager.default.removeItem(at: destination)
+                    }
+                    try FileManager.default.copyItem(at: source, to: destination)
+                    importedSHSHName = source.lastPathComponent
+                    UserDefaults.standard.set(importedSHSHName, forKey: "importedIOS613SHSHName")
+                    UserDefaults.standard.set(destination.path, forKey: "importedIOS613SHSHPath")
+                } catch {
+                    importedSHSHName = "Import failed: \(error.localizedDescription)"
+                }
+            case .failure(let error):
+                importedSHSHName = "Import failed: \(error.localizedDescription)"
+            }
+        }
     }
 }
