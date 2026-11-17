@@ -81,10 +81,10 @@ jobs:
           test -n "$APP_PATH"
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
-          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/QEMULegacyIOS-unsigned.ipa" Payload)
+          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/Project-Astra-unsigned.ipa" Payload)
       - uses: actions/upload-artifact@v4
         with:
-          name: QEMULegacyIOS-unsigned-ipa
+          name: Project-Astra-unsigned-ipa
           path: QEMULegacyIOS-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
@@ -111,7 +111,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ipa-build-${{ github.run_number }}
-          name: "QEMU Legacy iOS IPA build ${{ github.run_number }}"
+          name: "Project Astra IPA build ${{ github.run_number }}"
           prerelease: true
           generate_release_notes: true
           files: QEMULegacyIOS-unsigned.ipa
