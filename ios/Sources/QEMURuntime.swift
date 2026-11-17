@@ -25,6 +25,7 @@ final class QEMURuntime: ObservableObject {
     @Published private(set) var hasAttemptedStart = false
     @Published private(set) var hasReceivedFrame = false
     @Published private(set) var bootStatus = "Waiting to start…"
+    @Published private(set) var startupLog: [String] = []
 
     private var libraryHandle: UnsafeMutableRawPointer?
     private var frameFunction: QemuFrameFunction?
@@ -40,6 +41,7 @@ final class QEMURuntime: ObservableObject {
         }
         hasAttemptedStart = true
         hasReceivedFrame = false
+        startupLog = configuration.startupLog
         bootStatus = "Loading the iOS ARM64 QEMU engine…"
         status = bootStatus
 
@@ -56,6 +58,7 @@ final class QEMURuntime: ObservableObject {
             return
         }
         libraryHandle = handle
+        startupLog.append("iOS ARM64 QEMU engine loaded")
         bootStatus = "Connecting the virtual display and hardware controls…"
         status = bootStatus
 
@@ -86,6 +89,8 @@ final class QEMURuntime: ObservableObject {
         attach(callback, Unmanaged.passUnretained(self).toOpaque())
 
         didStart = true
+        startupLog.append("Virtual display and hardware controls connected")
+        startupLog.append("iPhone bootloader started")
         bootStatus = "Starting the virtual iPhone and bootloader…"
         status = bootStatus
         DispatchQueue.global(qos: .userInitiated).async {
@@ -222,6 +227,15 @@ struct QEMUDisplayView: View {
                             .foregroundStyle(.white.opacity(0.85))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(runtime.startupLog.enumerated()), id: \.offset) { _, item in
+                                Text("• " + item)
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.65))
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        .padding(.horizontal, 22)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.black)
