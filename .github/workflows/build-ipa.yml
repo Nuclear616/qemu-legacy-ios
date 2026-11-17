@@ -167,3 +167,22 @@ jobs:
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Publish IPA GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: astra-v${{ env.ASTRA_VERSION }}
+          name: "Project Astra ${{ env.ASTRA_VERSION }}"
+          prerelease: true
+          generate_release_notes: true
+          files: Project-Astra-unsigned.ipa
+          fail_on_unmatched_files: true
+      - name: Attach prepared firmware to IPA release
+        if: steps.firmware.outputs.available == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: astra-v${{ env.ASTRA_VERSION }}
+          files: |
+            ${{ runner.temp }}/prepared-firmware/*.zip
+            ${{ runner.temp }}/prepared-firmware/SHA256SUMS
+          fail_on_unmatched_files: true
