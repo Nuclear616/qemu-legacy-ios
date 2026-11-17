@@ -5,6 +5,7 @@ Items remain incomplete until implemented and tested.
 ## Source integration
 
 - [x] Copy iPhone 4 GSM/A4 board and peripheral source files into `vendor/qemu-iphone4/`.
+- [x] Copy additional S5L8920-era peripheral models and dependency headers.
 - [x] Copy selected Podium ARMv7, memory, boot and UI source files.
 - [x] Remove the upstream QEMU Git submodule link; keep board files as ordinary vendored source.
 - [x] Add a staging script for overlaying board source into a separately obtained QEMU tree.
@@ -24,7 +25,8 @@ Items remain incomplete until implemented and tested.
 ## GitHub Actions / IPA
 
 - [x] Add macOS workflow with XcodeGen project generation and unsigned IPA packaging.
-- [ ] Verify the workflow completes and artifact installs on a physical device.
+- [x] Successfully build the current SwiftUI scaffold and upload an unsigned IPA artifact.
+- [ ] Verify the artifact installs on a physical device.
 - [ ] Add signing/export support using user-provided Apple signing credentials.
 
 ## Guest boot validation
@@ -46,8 +48,8 @@ Items remain incomplete until implemented and tested.
 | iPhone 4/A4 board source | Copied; not compiled in this fork |
 | Generic QEMU engine | Not vendored; submodule removed |
 | Podium ARMv7/DBT source | Selected files copied; not integrated |
-| Native iOS app target | SwiftUI/XcodeGen scaffold added |
-| IPA workflow | Updated; build not yet verified |
+| Native iOS app target | SwiftUI/XcodeGen scaffold |
+| IPA workflow | Successful unsigned scaffold build |
 | iPhone 4 / iOS 7.1.2 boot | Not tested |
 | Cydia | Deferred until guest boot and jailbreak/bootstrap |
 | Host JIT on iOS 27.0.1 | Not tested |
