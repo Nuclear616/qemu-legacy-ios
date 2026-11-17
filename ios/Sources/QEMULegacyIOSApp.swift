@@ -33,6 +33,7 @@ struct ContentView: View {
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
     @AppStorage("appAppearance") private var appAppearance = "system"
+    @AppStorage("installCydiaAfterJailbreak") private var installJailbreak = false
 
     private var selectedColorScheme: ColorScheme? {
         switch appAppearance {
@@ -348,7 +349,8 @@ struct ContentView: View {
         do {
             let configuration = try PreparedFirmwareBundleStore.makeBootConfiguration(
                 bundleURL: bundle,
-                storageGiB: storageGiB
+                storageGiB: storageGiB,
+                installJailbreak: installJailbreak
             )
             status = "Boot configuration prepared for \(configuration.machine)."
             qemuRuntime.start(configuration: configuration)
