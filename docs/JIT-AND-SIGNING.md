@@ -4,7 +4,7 @@
 
 The physical device is the **host** (initial target: iOS 27.0.1). The virtual iPhone 4 running iOS 7.1.2 is the **guest**. Guest firmware and host JIT availability are separate concerns.
 
-## JIT is not an entitlement an app can grant itself
+## Host OS compatibility\n\nProject Astra's app target is built for iOS 17.0 and later. The embedded StikJIT helper extension is targeted at iOS 26.0 and later. On iOS 26, use a device-specific imported pairing file; on iOS 27 and later, the app can offer on-device pairing from Developer Mode settings. These are host-side requirements and do not change which guest iOS firmware can be emulated.\n\n## JIT is not an entitlement an app can grant itself
 
 An ordinary iOS app cannot grant itself unrestricted executable-memory/JIT privileges. Whether QEMU can use JIT on a particular host depends on the OS version, signing and installation path, developer configuration, and supported launch/debug mechanism.
 
