@@ -21,12 +21,89 @@ targets:
     sources:
       - path: Sources
       - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
+    sources:
+      - path: Sources
+        excludes:
+          - "HuskJITHelper/**"
+      - path: Resources
+        buildPhase: resources
     info:
       properties:
         LSApplicationQueriesSchemes:
           - stikdebug
+          - stikjit
           - apple-magnifier
+          - localdevvpn
+        NSLocalNetworkUsageDescription: "Project Astra uses the local network to pair this iPhone with its built-in StikJIT helper."
+        NSBonjourServices:
+          - "_remotepairing-pairable-host._tcp"
+        BGTaskSchedulerPermittedIdentifiers:
+          - "$(PRODUCT_BUNDLE_IDENTIFIER).pairing.*"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
         PRODUCT_NAME: QEMULegacyIOS
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/HuskJIT/HuskJITBridge.h
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/build/lib"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-lhusk_rppairing"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+    dependencies:
+      - target: HuskJITHelper
+
+  # The helper must be a separate process: StikJIT attaches to the main app
+  # and services the TXM breakpoint RPCs until Astra detaches.
+  HuskJITHelper:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources/HuskJITHelper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
+        INFOPLIST_FILE: Sources/HuskJITHelper/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../../Frameworks"
+    dependencies:
+      - framework: Frameworks/StikJIT.xcframework
+        embed: false
+    postBuildScripts:
+      - name: Embed StikJIT framework for helper
+        script: |
+          set -e
+          SRC="$SRCROOT/Frameworks/StikJIT.xcframework/ios-arm64/StikJIT.framework"
+          DST="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/StikJIT.framework"
+          test -d "$SRC"
+          rm -rf "$DST"
+          mkdir -p "$(dirname "$DST")"
+          ditto "$SRC" "$DST"
+          rm -rf "$DST/Headers" "$DST/Modules"
+          PLIST="$DST/Info.plist"
+          if [ ! -f "$PLIST" ]; then
+            plutil -create xml1 "$PLIST"
+            plutil -insert CFBundleIdentifier -string "$PRODUCT_BUNDLE_IDENTIFIER.StikJIT" "$PLIST"
+            plutil -insert CFBundleExecutable -string StikJIT "$PLIST"
+            plutil -insert CFBundleName -string StikJIT "$PLIST"
+            plutil -insert CFBundlePackageType -string FMWK "$PLIST"
+            plutil -insert CFBundleInfoDictionaryVersion -string 6.0 "$PLIST"
+            plutil -insert CFBundleShortVersionString -string 1.9.0 "$PLIST"
+            plutil -insert CFBundleVersion -string 1.9.0 "$PLIST"
+            plutil -insert MinimumOSVersion -string 17.4 "$PLIST"
+            plutil -insert CFBundleSupportedPlatforms -array "$PLIST"
+            plutil -insert CFBundleSupportedPlatforms.0 -string iPhoneOS "$PLIST"
+          fi
+          if [ -n "$EXPANDED_CODE_SIGN_IDENTITY" ] && [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+            codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$DST"
+          fi
+        basedOnDependencyAnalysis: false
