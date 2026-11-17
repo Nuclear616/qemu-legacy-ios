@@ -20,7 +20,7 @@ Open [Actions → Build iOS IPA](https://github.com/Nuclear616/qemu-legacy-ios/a
 
 ## Current app behavior
 
-The app displays the iPhone 4 GSM / A4 / n90ap target, allows selecting an IPSW file, and reports the emulator integration state. IPSW parsing, firmware preparation, guest boot, storage persistence and Cydia installation are not implemented yet. The current UI target uses iOS 17.0 or later.
+The app displays the iPhone 4 GSM / A4 / n90ap target, allows selecting an IPSW file, and includes an Emulator Settings screen. Settings include 1/2/4/8/16/32 GiB NAND size, a guest iOS version selector, experimental/unsigned firmware toggles, and an option to request Cydia after jailbreak. These are currently saved UI preferences only: IPSW parsing, signature/boot handling, dynamic NAND creation, guest boot, jailbreak and Cydia installation are not implemented yet. The current UI target uses iOS 17.0 or later.
 
 ## JIT and Cydia
 
