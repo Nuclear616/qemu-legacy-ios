@@ -282,8 +282,9 @@ static const uint8_t a4_n90_product_id[20] = {
 
 /*
  * iPhone 4 (N90AP, GSM): 512 MiB, the portrait 640x960 panel and N1 digitizer
- * N81 has, the iPad's CS42L61 + Mikey, HDQ gauge, BT on uart3. No NOR
- * (grafted, as N81). The baseband (spi2, its GPIOs) is left to the cell
+ * N81 has, the iPad's CS42L61 + Mikey, HDQ gauge, BT on uart3. The 8 GB SKU
+ * exposes two NAND CEs on each of the two H2FMI buses (four 2-GiB dies).
+ * No NOR (grafted, as N81). The baseband (spi2, its GPIOs) is left to the cell
  * stream's model; `baseband=off` (default) unmatches its DT node at boot.
  * docs/n90/README.md.
  */
