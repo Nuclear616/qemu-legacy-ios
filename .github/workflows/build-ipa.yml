@@ -67,14 +67,14 @@ jobs:
           nm -gU ios/Frameworks/libqemu-arm.dylib | grep -q ' _qemu_ios_ui_button$'
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Vendor Husk built-in StikJIT and build iOS pairing library
+      - name: Vendor Astra built-in StikJIT and build iOS pairing library
         run: |
           set -euo pipefail
           bash scripts/vendor-husk-stikjit.sh
-          test -s ios/build/lib/libhusk_rppairing.a
+          test -s ios/build/lib/libastra_rppairing.a
           test -s ios/Frameworks/StikJIT.xcframework/ios-arm64/StikJIT.framework/StikJIT
-          test -s ios/Resources/husk-jit.js
-          test -s ios/Sources/HuskJITHelper/HuskJITHelper.swift
+          test -s ios/Resources/astra-jit.js
+          test -s ios/Sources/AstraJITHelper/AstraJITHelper.swift
       - name: Validate 8 GB NAND preset
         run: |
           set -euo pipefail
@@ -122,7 +122,7 @@ jobs:
           test -n "$APP_PATH"
           test -d "$APP_PATH/PlugIns/AstraJITHelper.appex"
           test -s "$APP_PATH/Frameworks/StikJIT.framework/StikJIT"
-          test -s "$APP_PATH/husk-jit.js"
+          test -s "$APP_PATH/astra-jit.js"
           mkdir -p "$APP_PATH/Frameworks"
           cp ios/Frameworks/libqemu-arm.dylib "$APP_PATH/Frameworks/libqemu-arm.dylib"
           test -s "$APP_PATH/Frameworks/libqemu-arm.dylib"
