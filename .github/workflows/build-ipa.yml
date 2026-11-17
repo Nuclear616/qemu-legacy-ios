@@ -10,6 +10,11 @@ on:
       - ".github/workflows/build-ipa.yml"
 permissions:
   contents: write
+
+concurrency:
+  group: project-astra-ipa-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-ipa:
     runs-on: macos-15
@@ -18,6 +23,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Increment and record app version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(bash scripts/bump-version.sh)"
+          echo "ASTRA_VERSION=$VERSION" >> "$GITHUB_ENV"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "Bump Project Astra version to $VERSION"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+          echo "Building Project Astra $VERSION"
       - name: Verify QEMU-iOS engine source
         run: |
           set -euo pipefail
@@ -81,7 +99,7 @@ jobs:
       - name: Build unsigned app
         run: |
           set -euo pipefail
-          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" ASTRA_VERSION="$ASTRA_VERSION" CODE_SIGNING_ALLOWED=NO build
       - name: Package IPA
         run: |
           set -euo pipefail
