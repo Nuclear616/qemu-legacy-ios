@@ -1,55 +1,25 @@
 # QEMU Legacy iOS
 
-An experimental iOS front end and porting effort for emulating legacy Apple hardware with QEMU, initially targeting the **iPhone 4 GSM (n90ap) running iOS 7.1.2**.
+Experimental iOS front end targeting the **iPhone 4 GSM (n90ap)** and **iOS 7.1.2** guest.
 
-> **Status: iPhone 4/A4 board sources copied; iOS app target and IPA build are not complete.** This repository does not yet contain a complete Xcode iOS application project or a tested IPA.
+## Current status
 
-## iPhone 4 emulation source
+- iPhone 4/A4 QEMU board and peripheral sources are copied into `vendor/qemu-iphone4/`.
+- Selected Podium ARMv7 CPU, memory, boot and UI sources are copied into `vendor/podium-a4/`.
+- A native SwiftUI app target is defined in `ios/project.yml`.
+- GitHub Actions generates the Xcode project with XcodeGen and builds an unsigned IPA.
+- **This is currently a front-end scaffold. The A4 machine/CPU/boot pipeline is not connected to Start, and no guest boot has been verified.**
 
-The iPhone 4 GSM board implementation and its Apple-specific hardware models have been copied into vendor/qemu-iphone4/. The main board is QEMU's hw/arm/ipad1.c, which defines the a4_n90 profile and registers the iPhone-4 machine. The copied source set includes the S5L8930 peripherals, reused A4-era iPod touch hardware models, baseband/vibrator models, guest helpers, board documentation, and upstream licensing notices.
+## Build
 
-The copied files are pinned to upstream QEMU-iOS commit db230fe8e8e4d297724b2eccdc38bdc21876696a. See the vendored source manifest at vendor/qemu-iphone4/README.md.
+Run **Actions → Build iOS IPA → Run workflow**. The workflow installs XcodeGen, generates the project, builds for iOS device, and uploads an unsigned IPA artifact. Sign it before installation.
 
-**Important:** this is a copy of the iPhone 4 board/hardware source, not a copy of the entire QEMU engine. Generic QEMU CPU, device, memory, and build infrastructure is still provided by the pinned upstream source dependency below. The copied board sources have not yet been wired into a successful standalone build.
+The front end currently targets iOS 17.0 or later. No Apple firmware, iBoot binary, NAND dump, IPSW, or Cydia package is included. Selecting an IPSW only records the selected file; extraction and boot are not implemented.
 
-## Remaining upstream QEMU engine
+## JIT
 
-The pinned upstream checkout at vendor/qemu-ios remains only as the generic QEMU engine (CPU/TCG, memory, device framework, and build system). The iPhone 4 board and A4 device implementation files are copied into this repository and staged over the engine source before a build. Removing the engine checkout itself would leave no generic QEMU runtime to compile; vendoring the entire QEMU engine is a separate, much larger task.
+Host JIT on iOS 27.0.1 is separate from guest iOS 7.1.2 compatibility. The copied Podium JIT code is not integrated or verified on this host OS.
 
-Clone this repository with its generic QEMU engine dependency:
+## Licensing
 
-```sh
-git clone --recurse-submodules https://github.com/Nuclear616/qemu-legacy-ios.git
-```
-
-If you already cloned it:
-
-```sh
-git submodule update --init --recursive
-```
-
-The upstream iPhone 4 board documentation is also copied to docs/upstream/iphone-4-n90.md. It records upstream validation of iOS 7.1.2 booting; that is upstream's result, not a test performed by this repository.
-
-## Build without owning a Mac
-
-The Build iOS IPA workflow runs on a GitHub-hosted macOS runner. It checks out the generic engine, stages the copied iPhone 4 sources, then invokes Xcode, packages an unsigned IPA, and uploads it as an artifact.
-
-**Current limitation:** the workflow requires an Xcode project and scheme. The repository does not yet have the native iOS app project, so the workflow deliberately stops with a clear error until that target is added. The upstream contrib/ios-app/ files are an embedding bridge, not a complete standalone Xcode app. The generated IPA is unsigned; it must be signed before normal installation.
-
-## Goals
-
-- Integrate the QEMU engine and copied iPhone 4 board sources with a native iOS app.
-- Start with the iPhone 4 GSM (n90ap) machine and iOS 7.1.2 guest.
-- Provide virtual-device configuration and persistent storage.
-- Investigate supported host JIT execution on iOS 27.0.1.
-- Produce reproducible GitHub Actions builds and a signed IPA.
-
-## Licensing and firmware
-
-The upstream QEMU-iOS source is GPL-2.0; preserve its license, notices, and third-party licenses. The copied notices are in vendor/qemu-iphone4/upstream/; the engine dependency also retains vendor/qemu-ios/COPYING and vendor/qemu-ios/LICENSE. No Apple firmware or copyrighted iOS image is included. Users must supply firmware they are legally entitled to use.
-
-## Host vs guest
-
-The **guest** is the emulated iPhone 4 running iOS 7.1.2. The **host** is the physical device running iOS 27.0.1. Host JIT availability is separate from guest firmware compatibility.
-
-See ROADMAP.md and docs/JIT-AND-SIGNING.md.
+QEMU-derived sources retain upstream notices in `vendor/qemu-iphone4/upstream/`. Podium-derived files are attributed in `docs/PODIUM-A4-REUSE.md`. Preserve all applicable upstream licenses.

@@ -1,0 +1,24 @@
+name: QEMULegacyIOS
+options:
+  bundleIdPrefix: com.nuclear616
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: QEMU Legacy
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+targets:
+  QEMULegacyIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
+        PRODUCT_NAME: QEMULegacyIOS
