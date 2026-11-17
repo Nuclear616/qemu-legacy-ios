@@ -15,6 +15,7 @@ struct QEMULegacyIOSApp: App {
 struct ContentView: View {
     @State private var firmwareURL: URL?
     @State private var showingImporter = false
+    @State private var showingFirmwareBrowser = false
     @State private var isStarting = false
     @State private var status = "Ready to configure the guest"
     @State private var showingEngineNotice = false
@@ -56,9 +57,17 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                     Button {
+                        showingFirmwareBrowser = true
+                    } label: {
+                        Label("Download from IPSW.me", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
                         showingImporter = true
                     } label: {
-                        Label("Choose iOS IPSW", systemImage: "folder")
+                        Label("Choose IPSW from Files", systemImage: "folder")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
@@ -101,6 +110,13 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Emulator Settings")
+                }
+            }
+            .sheet(isPresented: $showingFirmwareBrowser) {
+                IPSWFirmwareBrowserView(selectedVersion: guestIOSVersion) { url, version in
+                    firmwareURL = url
+                    guestIOSVersion = version
+                    status = "Downloaded iOS \\(version) IPSW. QEMU runtime is not connected yet."
                 }
             }
             .fileImporter(
