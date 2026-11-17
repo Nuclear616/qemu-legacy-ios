@@ -16,6 +16,7 @@ private typealias QemuFrameFunction = @convention(c) (
     UnsafeMutablePointer<UInt64>
 ) -> Bool
 private typealias QemuTouchFunction = @convention(c) (Int32, Int32, Double, Double) -> Void
+private typealias QemuButtonFunction = @convention(c) (Int32, Bool) -> Void
 
 @MainActor
 final class QEMURuntime: ObservableObject {
@@ -26,6 +27,7 @@ final class QEMURuntime: ObservableObject {
     private var libraryHandle: UnsafeMutableRawPointer?
     private var frameFunction: QemuFrameFunction?
     private var touchFunction: QemuTouchFunction?
+    private var buttonFunction: QemuButtonFunction?
     private var didStart = false
     private var frameSerial: UInt64 = 0
 
@@ -53,7 +55,8 @@ final class QEMURuntime: ObservableObject {
         guard let mainSymbol = dlsym(handle, "qemu_ios_main"),
               let attachSymbol = dlsym(handle, "qemu_ios_ui_attach"),
               let frameSymbol = dlsym(handle, "qemu_ios_ui_frame"),
-              let touchSymbol = dlsym(handle, "qemu_ios_ui_touch") else {
+              let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
+              let buttonSymbol = dlsym(handle, "qemu_ios_ui_button") else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
             dlclose(handle)
             libraryHandle = nil
@@ -64,6 +67,7 @@ final class QEMURuntime: ObservableObject {
         let attach = unsafeBitCast(attachSymbol, to: QemuAttachFunction.self)
         frameFunction = unsafeBitCast(frameSymbol, to: QemuFrameFunction.self)
         touchFunction = unsafeBitCast(touchSymbol, to: QemuTouchFunction.self)
+        buttonFunction = unsafeBitCast(buttonSymbol, to: QemuButtonFunction.self)
 
         let callback: QemuFrameCallback = { opaque in
             guard let opaque else { return }
@@ -87,6 +91,14 @@ final class QEMURuntime: ObservableObject {
             DispatchQueue.main.async {
                 self.status = "QEMU stopped (exit code \(result)). Restart Project Astra before starting another VM."
             }
+        }
+    }
+
+    func pressButton(_ button: Int32) {
+        guard let buttonFunction else { return }
+        buttonFunction(button, true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            self?.buttonFunction?(button, false)
         }
     }
 
@@ -123,6 +135,54 @@ final class QEMURuntime: ObservableObject {
             intent: .defaultIntent
         )
         status = "QEMU is running · \(width) × \(height)"
+    }
+}
+
+
+struct EmulatorPopupView: View {
+    @ObservedObject var runtime: QEMURuntime
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text("Project Astra")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer()
+                hardwareButton("Power", systemImage: "power", id: 1)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+
+            QEMUDisplayView(runtime: runtime)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 12)
+
+            HStack(alignment: .center) {
+                hardwareButton("Volume Up", systemImage: "speaker.plus.fill", id: 2)
+                Spacer(minLength: 12)
+                hardwareButton("Home", systemImage: "house.fill", id: 0)
+                Spacer(minLength: 12)
+                hardwareButton("Volume Down", systemImage: "speaker.minus.fill", id: 3)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 18)
+        }
+        .background(Color(uiColor: .systemBackground))
+    }
+
+    private func hardwareButton(_ title: String, systemImage: String, id: Int32) -> some View {
+        Button {
+            runtime.pressButton(id)
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 19, weight: .semibold))
+                .frame(width: 54, height: 54)
+                .background(.thinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(.secondary.opacity(0.25), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 
