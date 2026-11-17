@@ -1,0 +1,44 @@
+name: Build QEMU iOS engine
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/ios-qemu-runtime
+    paths:
+      - "scripts/build-qemu-ios-engine.sh"
+      - "scripts/stage-qemu-iphone4.sh"
+      - "vendor/qemu-iphone4/**"
+      - ".github/workflows/build-qemu-ios-engine.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios-engine:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Install native QEMU build dependencies
+        run: brew install glib pixman libslirp ninja meson pkgconf
+
+      - name: Cross-build QEMU for iOS ARM64
+        run: bash scripts/build-qemu-ios-engine.sh
+
+      - name: Upload iOS QEMU engine
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-ios-arm64-engine
+          path: ios/Frameworks/libqemu-arm.dylib
+          if-no-files-found: error
+          retention-days: 14
