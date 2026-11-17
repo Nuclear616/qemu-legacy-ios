@@ -86,6 +86,30 @@ text = p.read_text().replace('static let hostName = "Project Astra"', 'static le
 p.write_text(text)
 PY
 
+# Claim and validate Astra's QEMU JIT memory while the built-in helper is
+# attached and still servicing TXM breakpoint RPCs.
+python3 - "$APP/JITSetup.swift" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = """                    readiness = Self.waitForDebugger { attached in
+                        finish(attached ? nil : "The helper did not attach within 90 seconds. "
+                                              + "Check that LocalDevVPN is connected, then try again.")
+                    }"""
+new = """                    readiness = Self.waitForDebugger { attached in
+                        guard attached else {
+                            finish("The helper did not attach within 90 seconds. Check that LocalDevVPN is connected, then try again.")
+                            return
+                        }
+                        let valid = AstraJITMemory.prepareWhileDebuggerAttached()
+                        finish(valid ? nil : "StikJIT attached, but Project Astra could not prepare and validate its QEMU JIT memory region.")
+                    }"""
+if old not in s:
+    raise SystemExit("Could not find the built-in StikJIT attach callback for Astra JIT memory setup")
+p.write_text(s.replace(old, new, 1))
+PY
+
 # The app's C/Swift bridge uses the Astra-renamed pairing header.
 cat > "$APP/AstraJITBridge.h" <<'EOF'
 #include "AstraRPPairing.h"
