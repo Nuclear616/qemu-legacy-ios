@@ -49,10 +49,13 @@ jobs:
         run: |
           set -euo pipefail
           APPIMAGE="$RUNNER_TEMP/LightTouch-v0.0.13-Linux-x86_64.AppImage"
-          curl -fL --retry 5 --retry-delay 3 \
-            "https://github.com/blake-lucas/LightTouch/releases/download/v0.0.13/LightTouch-v0.0.13-Linux-x86_64.AppImage" \
+          curl -fL --retry 5 --retry-delay 3 \\
+            "https://github.com/blake-lucas/LightTouch/releases/download/v0.0.13/LightTouch-v0.0.13-Linux-x86_64.AppImage" \\
             -o "$APPIMAGE"
-          unsquashfs -no-progress -d "$RUNNER_TEMP/lighttouch-app" "$APPIMAGE"
+          echo "e08b2e1dd8b44aadb838a85d78098744cf5185279f902e2d80be9f4a01cf83e2  $APPIMAGE" | sha256sum --check
+          chmod +x "$APPIMAGE"
+          (cd "$RUNNER_TEMP" && "$APPIMAGE" --appimage-extract >/dev/null)
+          mv "$RUNNER_TEMP/squashfs-root" "$RUNNER_TEMP/lighttouch-app"
           FWKIT="$(find "$RUNNER_TEMP/lighttouch-app" -type f -name firmwarekit -print -quit)"
           test -n "$FWKIT"
           RESOURCES="$(dirname "$FWKIT")"
