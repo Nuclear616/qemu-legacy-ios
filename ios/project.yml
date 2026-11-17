@@ -46,7 +46,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
         PRODUCT_NAME: QEMULegacyIOS
-        SWIFT_OBJC_BRIDGING_HEADER: Sources/HuskJIT/HuskJITBridge.h
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/HuskJIT/AstraJITBridge.h
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
           - "$(SRCROOT)/build/lib"
