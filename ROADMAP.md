@@ -2,35 +2,37 @@
 
 Items remain incomplete until implemented and tested.
 
-## Repository and licensing
+## Source integration and licensing
 
-- [x] Create project repository and scaffold.
-- [ ] Import upstream source at a pinned commit.
-- [ ] Preserve GPL-2.0 text, copyright notices, and third-party licenses.
-- [ ] Record upstream commit and local patches.
+- [x] Add upstream QEMU-iOS as a pinned Git submodule.
+- [x] Import the upstream iPhone 4 n90 board documentation.
+- [x] Record the upstream commit and licensing location.
+- [ ] Add a reproducible source build for iOS arm64.
+- [ ] Audit all required upstream dependencies and licenses.
 
 ## iOS application
 
-- [ ] Add an Xcode iOS application target.
+- [ ] Add a complete Xcode iOS application target.
+- [ ] Wire `contrib/ios-app/qemu-ios-entry.c` and `qemu-ios-ui.c` into the app.
 - [ ] Add launch screen and emulator status view.
 - [ ] Add machine, memory, CPU, and storage configuration.
 - [ ] Add safe import/export for user-supplied firmware and disk images.
 - [ ] Keep firmware out of the repository.
 
-## QEMU engine
+## GitHub Actions / IPA
 
-- [ ] Identify minimum QEMU subsystems required by the iPhone 4 machine.
-- [ ] Build dependencies for iOS arm64.
-- [ ] Resolve macOS-only APIs in upstream app integration.
-- [ ] Add a narrow native bridge to the QEMU C API.
-- [ ] Add logging and safe shutdown.
+- [x] Add a GitHub-hosted macOS workflow skeleton.
+- [x] Add manual workflow dispatch and unsigned IPA artifact packaging.
+- [ ] Add the native iOS app project and scheme required by the workflow.
+- [ ] Add signing/export support with user-provided Apple signing credentials.
+- [ ] Verify the artifact installs on the target device.
 
 ## Guest boot validation
 
-- [ ] Confirm exact iPhone 4 machine identifier and board configuration.
-- [ ] Verify boot chain and image format.
-- [ ] Attempt iOS 7.1.2 guest boot.
-- [ ] Record console output and limitations.
+- [x] Identify the upstream iPhone 4 GSM machine as `-M iPhone-4` / n90ap / S5L8930.
+- [x] Record upstream's iOS 7.1.2 boot validation in `docs/upstream/iphone-4-n90.md`.
+- [ ] Reproduce the boot using this repository's build.
+- [ ] Record console output and known limitations.
 - [ ] Test reboot, shutdown, and persistence.
 
 ## Host JIT
@@ -41,21 +43,14 @@ Items remain incomplete until implemented and tested.
 - [ ] Provide clear fallback when JIT is unavailable.
 - [ ] Verify on physical iOS 27.0.1 hardware.
 
-## Release
-
-- [ ] Add reproducible Xcode build instructions.
-- [ ] Add CI on a compatible macOS runner.
-- [ ] Record Xcode and SDK versions.
-- [ ] Produce and test a signed IPA.
-- [ ] Publish checksums and release notes.
-
 ## Current validation
 
 | Item | Status |
 |---|---|
-| Repository scaffold | Complete |
-| Upstream source imported | Not yet |
-| iOS app target | Not yet |
-| iPhone 4 / iOS 7.1.2 boot | Not tested |
+| Upstream QEMU source | Pinned submodule |
+| iPhone 4 board docs | Imported |
+| Native iOS app target | Not yet present |
+| GitHub IPA workflow | Added; waits for Xcode project |
+| iPhone 4 / iOS 7.1.2 boot in this fork | Not tested |
 | Host JIT on iOS 27.0.1 | Not tested |
-| IPA | Not built |
+| Installable signed IPA | Not built |
