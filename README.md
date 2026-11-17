@@ -14,7 +14,7 @@ Selected Podium ARMv7 CPU, DBT/JIT, memory, boot and UI files are in `vendor/pod
 
 ## Build an unsigned IPA
 
-The GitHub Actions workflow uses XcodeGen to generate the project from `ios/project.yml`, builds the SwiftUI app for iOS device, packages an unsigned IPA, and uploads it as `QEMULegacyIOS-unsigned-ipa`.
+The GitHub Actions workflow checks out the pinned QEMU-iOS engine submodule, uses XcodeGen to generate the current SwiftUI project from `ios/project.yml`, builds the app for iOS device, packages an unsigned IPA, and uploads it as `QEMULegacyIOS-unsigned-ipa`. The current workflow does not yet compile or link QEMU into the app.
 
 Open [Actions → Build iOS IPA](https://github.com/Nuclear616/qemu-legacy-ios/actions/workflows/build-ipa.yml), choose a successful run, and download the artifact. The IPA is unsigned and must be signed before installation.
 
