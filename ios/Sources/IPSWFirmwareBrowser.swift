@@ -37,7 +37,7 @@ struct IPSWFirmwareBrowserView: View {
     let deviceIdentifier: String
 
     private var apiURL: URL {
-        URL(string: "https://api.ipsw.me/v4/device/\\(deviceIdentifier)?type=ipsw")!
+        URL(string: "https://api.ipsw.me/v4/device/\(deviceIdentifier)?type=ipsw")!
     }
 
     private var deviceDisplayName: String {
@@ -66,7 +66,7 @@ struct IPSWFirmwareBrowserView: View {
                 } else {
                     List {
                         Section {
-                            Text("Showing IPSW files for \\(deviceDisplayName) (\\(deviceIdentifier)). Signing status comes from IPSW.me and can change.")
+                            Text("Showing IPSW files for \(deviceDisplayName) (\(deviceIdentifier)). Signing status comes from IPSW.me and can change.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -208,7 +208,7 @@ struct IPSWFirmwareBrowserView: View {
                 throw FirmwareError.downloadFailed
             }
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let destination = documents.appendingPathComponent("\\(deviceIdentifier)_iOS_\\(firmware.version)_\\(firmware.buildID).ipsw")
+            let destination = documents.appendingPathComponent("\(deviceIdentifier)_iOS_\(firmware.version)_\(firmware.buildID).ipsw")
             if FileManager.default.fileExists(atPath: destination.path) {
                 try FileManager.default.removeItem(at: destination)
             }
@@ -230,7 +230,7 @@ private enum FirmwareError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .badResponse: return "IPSW.me returned an unsuccessful response."
-        case .wrongDevice(let identifier): return "The firmware catalog did not match \\(identifier)."
+        case .wrongDevice(let identifier): return "The firmware catalog did not match \(identifier)."
         case .downloadFailed: return "Apple's firmware server did not complete the download."
         }
     }
