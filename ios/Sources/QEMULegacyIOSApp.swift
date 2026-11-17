@@ -524,7 +524,7 @@ struct EmulatorSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("Built-in StikJIT uses Husk's separate helper extension and pairing flow. The memory validator checks Astra's QEMU JIT region; passing it does not by itself prove that the emulator boots.")
+                Text("Built-in StikJIT (iOS 27+) uses Project Astra's separate helper extension and on-device pairing flow. The memory validator checks Astra's QEMU JIT region; passing it does not by itself prove that the emulator boots.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
