@@ -36,6 +36,14 @@ if [ ! -f "$ENGINE/include/openssl/aes.h" ]; then
   exit 5
 fi
 
+if [ -f "$VENDOR/include/openssl/bn.h" ]; then
+  cp "$VENDOR/include/openssl/bn.h" "$ENGINE/include/openssl/bn.h"
+fi
+if [ ! -f "$ENGINE/include/openssl/bn.h" ]; then
+  echo "Missing GMP-backed iOS BIGNUM compatibility header: include/openssl/bn.h" >&2
+  exit 5
+fi
+
 # The A4 board also calls into the shared iPod Touch support modules. They
 # are copied into the engine tree above, but the upstream IPAD1 Meson stanza
 # only lists the board-specific files. Register the shared implementations
