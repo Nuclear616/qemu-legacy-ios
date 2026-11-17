@@ -13,6 +13,12 @@ struct ContentView: View {
     @State private var status = "Ready to configure the guest"
     @State private var showingEngineNotice = false
 
+    @AppStorage("guestStorageGiB") private var storageGiB = 8
+    @AppStorage("installCydiaAfterJailbreak") private var installCydia = false
+    @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
+    @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
+    @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 22) {
@@ -22,13 +28,13 @@ struct ContentView: View {
                     .foregroundStyle(.tint)
                 VStack(spacing: 6) {
                     Text("iPhone 4 · GSM").font(.title2.bold())
-                    Text("A4 · n90ap · iOS 7.1.2")
+                    Text("A4 · n90ap · iOS \(guestIOSVersion)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 18) {
                     Label("Wi-Fi", systemImage: "wifi")
-                    Label("8 GiB NAND", systemImage: "internaldrive")
+                    Label("\(storageGiB) GiB NAND", systemImage: "internaldrive")
                     Label("512 MiB RAM", systemImage: "memorychip")
                 }
                 .font(.caption)
@@ -47,7 +53,7 @@ struct ContentView: View {
                     Button {
                         showingImporter = true
                     } label: {
-                        Label("Choose iOS 7.1.2 IPSW", systemImage: "folder")
+                        Label("Choose iOS IPSW", systemImage: "folder")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
@@ -82,6 +88,16 @@ struct ContentView: View {
             }
             .padding()
             .navigationTitle("QEMU Legacy iOS")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        EmulatorSettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Emulator Settings")
+                }
+            }
             .fileImporter(
                 isPresented: $showingImporter,
                 allowedContentTypes: [UTType(filenameExtension: "ipsw") ?? .data],
@@ -100,18 +116,84 @@ struct ContentView: View {
             .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("The app UI and iPhone 4 device profile are present, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Selecting an IPSW cannot start the guest yet.")
+                Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak and Cydia options will take effect after that runtime is integrated.")
             }
         }
     }
 
     private func startEmulator() {
         guard firmwareURL != nil else {
-            status = "Choose an iOS 7.1.2 IPSW first."
+            status = "Choose an iOS IPSW first."
             showingImporter = true
             return
         }
-        status = "Start requested. QEMU runtime is not bundled or connected yet."
+        if allowUnsignedFirmware && !allowExperimentalBoots {
+            status = "Enable Experimental boots before trying unsigned firmware."
+            return
+        }
+        status = "Start requested with \(storageGiB) GiB storage. QEMU runtime is not connected yet."
         showingEngineNotice = true
+    }
+}
+
+struct EmulatorSettingsView: View {
+    @AppStorage("guestStorageGiB") private var storageGiB = 8
+    @AppStorage("installCydiaAfterJailbreak") private var installCydia = false
+    @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
+    @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
+    @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
+
+    private let storageOptions = [1, 2, 4, 8, 16, 32]
+    private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
+
+    var body: some View {
+        Form {
+            Section("Guest device") {
+                Picker("NAND storage", selection: $storageGiB) {
+                    ForEach(storageOptions, id: \\.self) { size in
+                        Text("\(size) GiB").tag(size)
+                    }
+                }
+                Text("Changes the requested virtual NAND capacity. Existing guest data may not fit if you reduce the size.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Firmware") {
+                Picker("iOS version", selection: $guestIOSVersion) {
+                    ForEach(firmwareOptions, id: \\.self) { version in
+                        Text("iOS \(version)").tag(version)
+                    }
+                }
+                Toggle("Experimental boots", isOn: $allowExperimentalBoots)
+                Toggle("Allow unsigned firmware", isOn: $allowUnsignedFirmware)
+                    .disabled(!allowExperimentalBoots)
+                if allowUnsignedFirmware {
+                    Label("Unsigned firmware may fail before the guest OS starts. This setting does not bypass Apple signature checks or boot-chain restrictions.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+                Text("Only firmware compatible with the iPhone 4 GSM (n90ap) can boot. Selecting a version does not download firmware.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Jailbreak & packages") {
+                Toggle("Install Cydia after jailbreak", isOn: $installCydia)
+                Text("Cydia requires a compatible jailbreak and bootstrap inside the guest. This option saves your preference; automatic jailbreak and package installation are not implemented yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Text("These are saved configuration preferences. They will not change emulator behavior until the QEMU runtime, firmware preparation and guest setup pipeline are connected.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Development status")
+            }
+        }
+        .navigationTitle("Emulator Settings")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
