@@ -137,6 +137,8 @@ typedef struct A4Board {
     uint16_t vibrator_enable;
     /* The SWI command that sets the backlight current: the DT's swi command-iset (K48 1, N81 and N90 3). */
     uint8_t swi_iset;
+    uint8_t nand_ce_count;                  /* Populated NAND chip enables per H2FMI bus; 0 keeps the firmware DT. */
+    uint8_t nand_ce_mask;                   /* Matching IOP CE mask; 0 keeps the model default. */
 } A4Board;
 
 /* iPad 1 (K48AP): values measured on the real unit unless said otherwise. */
@@ -326,6 +328,7 @@ static const A4Board a4_n90 = {
     /* n90.bin in the 8C148 rootfs: 4.221.38.1, Wed 2010-10-13 15:40:46 */
     .wifi_fw_version = "wl0: Oct 13 2010 15:40:46 version 4.221.38.1",
     .wifi_mac = { 0x02, 0x00, 0x00, 0x90, 0x00, 0x01 },  /* synthetic, locally administered */
+    .nand_ce_count = 2, .nand_ce_mask = 0x03, /* 2 buses x 2 x 2 GiB dies = 8 GiB raw NAND */
     .bb_ifx = 2, .bb_max_data = 0x7fc,       /* DT spi2 protocol-version, max-data-size */
     .bb_mrdy = 0x0605, .bb_srdy = 0x0104,
     .ringer_active_high = true,              /* function-button_ringerab flags 0x100; K48's are 0 */
@@ -772,6 +775,12 @@ static void ipad1_cpu_reset(void *opaque)
      * the DT (the cell stream turns it on with baseband=on) but matches nothing,
      * as on a Wi-Fi iPad, so AppleBaseband never waits on a silent radio.
      */
+    if (s->board->nand_ce_count) {
+        /* The 8 GB N90 SKU has two populated CEs on each of its two H2FMI buses. */
+        uint8_t nand_ce_count[4] = { s->board->nand_ce_count, 0, 0, 0 };
+        a4_dt_edit((uint8_t *)data, image_len, load_pa, bootargs_pa,
+                   &(A4DTEdit){ "nand", "#ce", nand_ce_count, sizeof(nand_ce_count) });
+    }
     if (!s->baseband) {
         a4_dt_unmatch((uint8_t *)data, image_len, load_pa, bootargs_pa, "baseband");
     } else if (s->bb_modem) {
@@ -1574,6 +1583,9 @@ static void ipad1_init(MachineState *machine)
      */
     dev = qdev_new(TYPE_S5L8930_IOP);
     iop = dev;
+    if (s->board->nand_ce_mask) {
+        qdev_prop_set_uint8(dev, "nand-ce-mask", s->board->nand_ce_mask);
+    }
     if (sdio) {
         object_property_set_link(OBJECT(dev), "sdio", OBJECT(sdio), &error_fatal);
     }
