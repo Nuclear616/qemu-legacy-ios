@@ -243,8 +243,9 @@ struct IPSWFirmwareBrowserView: View {
             let downloader = IPSWDownloadDelegate { written, expected, remaining in
                 self.downloadedBytes = written
                 if expected > 0 { self.totalDownloadBytes = expected }
-                self.downloadFraction = expected > 0
-                    ? min(1, Double(written) / Double(expected))
+                let denominator = expected > 0 ? expected : self.totalDownloadBytes
+                self.downloadFraction = denominator > 0
+                    ? min(1, Double(written) / Double(denominator))
                     : 0
                 self.estimatedSecondsRemaining = remaining
             }
@@ -266,6 +267,87 @@ struct IPSWFirmwareBrowserView: View {
         } catch {
             errorMessage = "Download failed: \(error.localizedDescription)"
         }
+    }
+}
+
+
+private final class IPSWDownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    typealias DownloadResult = (URL, HTTPURLResponse)
+
+    private var continuation: CheckedContinuation<DownloadResult, Error>?
+    private var session: URLSession?
+    private let startedAt = Date()
+    private let onProgress: @MainActor @Sendable (Int64, Int64, Double?) -> Void
+    private var didFinish = false
+
+    init(onProgress: @escaping @MainActor @Sendable (Int64, Int64, Double?) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func download(from url: URL) async throws -> DownloadResult {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            let configuration = URLSessionConfiguration.default
+            configuration.waitsForConnectivity = true
+            let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+            self.session = session
+            session.downloadTask(with: url).resume()
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didWriteData bytesWritten: Int64,
+        totalBytesWritten: Int64,
+        totalBytesExpectedToWrite: Int64
+    ) {
+        let expected = max(0, totalBytesExpectedToWrite)
+        let elapsed = max(0.1, Date().timeIntervalSince(startedAt))
+        let speed = Double(totalBytesWritten) / elapsed
+        let remaining = expected > 0 && speed > 0
+            ? Double(max(0, expected - totalBytesWritten)) / speed
+            : nil
+        Task { @MainActor [onProgress] in
+            onProgress(totalBytesWritten, expected, remaining)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        downloadTask: URLSessionDownloadTask,
+        didFinishDownloadingTo location: URL
+    ) {
+        guard let response = downloadTask.response as? HTTPURLResponse else {
+            finish(.failure(FirmwareError.downloadFailed))
+            return
+        }
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("astra-\(UUID().uuidString).ipsw")
+        do {
+            try FileManager.default.moveItem(at: location, to: destination)
+            finish(.success((destination, response)))
+        } catch {
+            finish(.failure(error))
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            finish(.failure(error))
+        } else if !didFinish {
+            finish(.failure(FirmwareError.downloadFailed))
+        }
+    }
+
+    private func finish(_ result: Result<DownloadResult, Error>) {
+        guard !didFinish else { return }
+        didFinish = true
+        let continuation = self.continuation
+        self.continuation = nil
+        session?.finishTasksAndInvalidate()
+        self.session = nil
+        continuation?.resume(with: result)
     }
 }
 
