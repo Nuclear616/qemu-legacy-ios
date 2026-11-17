@@ -25,6 +25,7 @@ sh "$ROOT/scripts/stage-qemu-iphone4.sh"
 
 # The iOS SDK provides CommonCrypto, not OpenSSL headers/libraries.
 python3 "$ROOT/scripts/patch-qemu-ios-apple-aes.py" "$ENGINE/include/hw/arm/ipod_touch_aes.h"
+python3 "$ROOT/scripts/patch-qemu-ios-ios-compat.py" "$ENGINE"
 
 # This device configuration deliberately includes only the A4 iPhone 4 machine.
 mkdir -p "$ENGINE/configs/devices/arm-softmmu"
