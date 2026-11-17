@@ -103,6 +103,7 @@ struct ContentView: View {
 
     private var selectedDeviceIdentifier: String {
         switch cpuFamily {
+        case "S5L8900-2G": return "iPhone1,1"
         case "ARM11": return "iPhone1,2"
         case "A5": return "iPhone4,1"
         default: return "iPhone3,1"
@@ -124,6 +125,7 @@ struct ContentView: View {
 
     private var deviceTitle: String {
         switch cpuFamily {
+        case "S5L8900-2G": return "iPhone 2G · GSM"
         case "ARM11": return "iPhone 3G · GSM"
         case "A5": return "iPhone 4S · GSM"
         default: return "iPhone 4 · GSM"
@@ -132,7 +134,8 @@ struct ContentView: View {
 
     private var deviceSubtitle: String {
         switch cpuFamily {
-        case "ARM11": return "ARM11 · N82AP · iOS \(guestIOSVersion)"
+        case "S5L8900-2G": return "S5L8900 · m68ap · iOS \(guestIOSVersion)"
+        case "ARM11": return "S5L8900 · N82AP · iOS \(guestIOSVersion)"
         case "A5": return "A5 · n94ap · iOS \(guestIOSVersion)"
         default: return "A4 · n90ap · iOS \(guestIOSVersion)"
         }
@@ -142,7 +145,7 @@ struct ContentView: View {
         HStack(spacing: 18) {
             Label("Wi-Fi", systemImage: "wifi")
             Label("\(storageGiB) GiB NAND", systemImage: "internaldrive")
-            Label("512 MiB RAM", systemImage: "memorychip")
+            Label(cpuFamily == "S5L8900-2G" || cpuFamily == "ARM11" ? "128 MiB RAM" : "512 MiB RAM", systemImage: "memorychip")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -253,8 +256,9 @@ struct ContentView: View {
     }
 
     private func startEmulator() {
-        if cpuFamily == "ARM11" {
-            status = "iPhone 3G selected (N82AP / iphone3g). Its ARM11 QEMU backend and 8C148 firmware preparation are not integrated into this IPA yet; the imported iPhone 4 bundle cannot be used."
+        if cpuFamily == "S5L8900-2G" || cpuFamily == "ARM11" {
+            let device = cpuFamily == "S5L8900-2G" ? "iPhone 2G (m68ap)" : "iPhone 3G (N82AP)"
+            status = "\(device) selected. Both use the S5L8900 / ARM1176 family, but their board profiles, boot ROM handling, and prepared firmware are not integrated into this IPA yet. The iPhone 4 bundle cannot be used."
             showingEngineNotice = true
             return
         }
@@ -297,7 +301,13 @@ struct EmulatorSettingsView: View {
     @AppStorage("appAppearance") private var appAppearance = "system"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
-    private let firmwareOptions = ["4.2.1", "7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
+    private var firmwareOptions: [String] {
+        switch cpuFamily {
+        case "S5L8900-2G": return ["3.1.3"]
+        case "ARM11": return ["4.2.1"]
+        default: return ["4.2.1", "7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
+        }
+    }
 
     var body: some View {
         Form {
@@ -316,10 +326,20 @@ struct EmulatorSettingsView: View {
                 Picker("CPU / device family", selection: $cpuFamily) {
                     Text("A4 · iPhone 4").tag("A4")
                     Text("A5 · iPhone 4S (experimental)").tag("A5")
-                    Text("ARM11 · iPhone 3G").tag("ARM11")
+                    Text("S5L8900 · iPhone 2G (experimental)").tag("S5L8900-2G")
+                    Text("S5L8900 · iPhone 3G (experimental)").tag("ARM11")
                 }
-                if cpuFamily == "ARM11" {
-                    Label("iPhone 3G uses the S5L8900 / ARM1176JZF-S platform (N82AP, iPhone1,2). Its iOS 4.2.1 firmware build is 8C148 and requires a separate iphone3g QEMU machine, BootROM, NAND/NOR preparation, and firmware keys.", systemImage: "info.circle")
+                if cpuFamily == "S5L8900-2G" || cpuFamily == "ARM11" {
+                    let isOriginalIPhone = cpuFamily == "S5L8900-2G"
+                    Label(
+                        isOriginalIPhone
+                            ? "Original iPhone (m68ap / iPhone1,1): S5L8900 / ARM1176JZF-S, 128 MiB RAM. iOS 3.1.3 is the final firmware profile. It needs its own board setup and S5L8900 boot ROM."
+                            : "iPhone 3G (N82AP / iPhone1,2): same S5L8900 / ARM1176JZF-S family, 128 MiB RAM. iOS 4.2.1 (8C148) is the final firmware profile. It needs its own board setup and NAND/NOR preparation.",
+                        systemImage: "info.circle"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    Text("The CPU family can be shared, but the 2G and 3G are separate device targets. Neither S5L8900 board is connected to the app's QEMU runtime yet.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -338,7 +358,7 @@ struct EmulatorSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if cpuFamily != "ARM11" {
+            if cpuFamily != "ARM11" && cpuFamily != "S5L8900-2G" {
             Section("iOS 6.1.3 OTA downgrade") {
                 if cpuFamily == "A5" {
                     Toggle("Prepare iOS 6.1.3 OTA downgrade", isOn: $prepareIOS613OTA)
@@ -412,9 +432,11 @@ struct EmulatorSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
-                Text(cpuFamily == "ARM11"
-                     ? "For iPhone 3G, select iOS 4.2.1 (8C148). The app currently has no integrated ARM11 restore/boot backend; selecting firmware does not make it bootable."
-                     : "Only firmware compatible with the selected iPhone 4 target can boot. Selecting a version does not download firmware.")
+                Text(cpuFamily == "S5L8900-2G"
+                     ? "For iPhone 2G, the final firmware is iOS 3.1.3. Its S5L8900 board and boot ROM path are not integrated yet."
+                     : cpuFamily == "ARM11"
+                        ? "For iPhone 3G, the final firmware is iOS 4.2.1 (8C148). Its S5L8900 board and NAND/NOR preparation are not integrated yet."
+                        : "Only firmware compatible with the selected iPhone 4 target can boot. Selecting a version does not download firmware.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -462,6 +484,15 @@ struct EmulatorSettingsView: View {
                     .foregroundStyle(.secondary)
             } header: {
                 Text("Development status")
+            }
+        }
+        .onChange(of: cpuFamily) { _, newValue in
+            if newValue == "S5L8900-2G" {
+                guestIOSVersion = "3.1.3"
+            } else if newValue == "ARM11" {
+                guestIOSVersion = "4.2.1"
+            } else if guestIOSVersion == "3.1.3" {
+                guestIOSVersion = "7.1.2"
             }
         }
         .navigationTitle("Emulator Settings")
