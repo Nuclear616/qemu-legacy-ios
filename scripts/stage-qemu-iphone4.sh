@@ -2,12 +2,13 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-ENGINE="${QEMU_SOURCE_DIR:-}"
+ENGINE="${QEMU_SOURCE_DIR:-$ROOT/vendor/qemu-engine}"
 VENDOR="$ROOT/vendor/qemu-iphone4"
 
-if [ -z "$ENGINE" ]; then
-  echo "Set QEMU_SOURCE_DIR to a separately obtained compatible QEMU source tree." >&2
-  echo "The generic QEMU engine is not vendored or linked as a submodule here." >&2
+if [ ! -d "$ENGINE" ]; then
+  echo "QEMU engine source not found at: $ENGINE" >&2
+  echo "Initialize the pinned submodule with: git submodule update --init --recursive" >&2
+  echo "To use another compatible checkout, set QEMU_SOURCE_DIR." >&2
   exit 2
 fi
 
