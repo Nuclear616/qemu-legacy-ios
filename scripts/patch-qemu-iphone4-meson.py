@@ -7,10 +7,16 @@ meson = Path(sys.argv[1])
 text = meson.read_text()
 marker = "# Project Astra: shared A4 peripheral implementations."
 # Remove our previous generated tail/fragment so rerunning staging is idempotent.
-if marker in text:
-    text = text.split(marker, 1)[0]
-
 export_marker = "hw_arch += {'arm': arm_ss}"
+if marker in text:
+    start = text.index(marker)
+    export_at = text.find(export_marker, start)
+    if export_at >= 0:
+        # Previous generated block was inserted before the export.
+        text = text[:start] + text[export_at:]
+    else:
+        # Older generated block was appended after the export.
+        text = text[:start]
 if export_marker not in text:
     raise SystemExit("Could not find ARM source-set export in hw/arm/meson.build")
 
