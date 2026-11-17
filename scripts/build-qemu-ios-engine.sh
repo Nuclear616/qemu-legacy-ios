@@ -99,7 +99,7 @@ pkg-config = 'pkg-config'
 c_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
 c_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface']
 cpp_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
-cpp_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface', '-lucontext']
+cpp_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface']
 objc_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
 
 [host_machine]
