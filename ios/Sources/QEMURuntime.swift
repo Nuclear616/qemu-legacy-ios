@@ -80,7 +80,9 @@ final class QEMURuntime: ObservableObject {
             let allocated = arguments.map { strdup($0) }
             defer { allocated.forEach { if let value = $0 { free(value) } } }
             var argv: [UnsafeMutablePointer<CChar>?] = allocated
-            let result = qemuMain(Int32(argv.count), &argv)
+            let result = argv.withUnsafeMutableBufferPointer { buffer in
+                qemuMain(Int32(buffer.count), buffer.baseAddress)
+            }
             DispatchQueue.main.async {
                 self.status = "QEMU stopped (exit code \(result)). Restart Project Astra before starting another VM."
             }
