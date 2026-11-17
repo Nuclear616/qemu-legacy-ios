@@ -21,7 +21,7 @@ targets:
     sources:
       - path: Sources
         excludes:
-          - "HuskJITHelper/**"
+          - "AstraJITHelper/**"
       - path: Resources
         buildPhase: resources
       - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
@@ -41,7 +41,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: "Project Astra LocalDevVPN callback"
             CFBundleURLSchemes:
-              - husk
+              - astra
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
@@ -94,7 +94,7 @@ targets:
     platform: iOS
     deploymentTarget: "26.0"
     sources:
-      - path: Sources/HuskJITHelper
+      - path: Sources/AstraJITHelper
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
