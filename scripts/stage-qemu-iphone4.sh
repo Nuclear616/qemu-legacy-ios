@@ -40,6 +40,17 @@ for source in \
   fi
 done
 
+for header in ipod_touch_sdio.h mrvl8686.h; do
+  if [ ! -f "$ENGINE/include/hw/arm/$header" ]; then
+    echo "Missing staged Wi-Fi header: include/hw/arm/$header" >&2
+    exit 5
+  fi
+done
+if [ ! -f "$ENGINE/include/hw/net/bcm_fullmac.h" ]; then
+  echo "Missing staged Wi-Fi header: include/hw/net/bcm_fullmac.h" >&2
+  exit 5
+fi
+
 grep -q "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" || {
   echo "QEMU engine is missing CONFIG_IPAD1 source registration." >&2
   exit 3
@@ -51,12 +62,12 @@ grep -q "config IPAD1" "$ENGINE/hw/arm/Kconfig" || {
 
 echo "Staged copied iPhone 4 GSM (n90ap/A4) sources into: $ENGINE"
 echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
-echo "The default NAND ID is Samsung 0x7294D7EC (16 GB); preserve matching DT geometry."
-echo "The BCM4329 Wi-Fi bridge is enabled by default; use wifi=on and a wifi0 netdev."
-echo "Merge the pinned Kconfig/Meson fragments from $VENDOR/upstream/hw into the generic QEMU build files."
+echo "N90 uses Samsung 0xB614D5AD (4 KiB pages, 128 pages/block); the 8 GiB profile uses two CEs on each of two buses."
+echo "The BCM4329 Wi-Fi bridge is enabled by default; it auto-creates user-mode NAT networking as wifi0."
+echo "The CONFIG_IPAD1 Meson registration below enables the BCM4329 SDIO card models."
 
 # Register the shared BCM4329 SDIO/full-MAC implementation exactly once.
-if ! grep -q "ipod_touch_sdio.c" "$ENGINE/hw/arm/meson.build"; then
+if ! grep "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" | grep -q "ipod_touch_sdio.c"; then
   printf '%s\n' "" "# QEMU Legacy iOS: BCM4329 Wi-Fi for the iPhone 4 GSM board." "arm_ss.add(when: 'CONFIG_IPAD1', if_true: files('ipod_touch_sdio.c', 'bcm_fullmac.c', 'mrvl8686.c'))" >> "$ENGINE/hw/arm/meson.build"
 fi
 
