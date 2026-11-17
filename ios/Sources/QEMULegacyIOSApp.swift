@@ -199,6 +199,11 @@ struct ContentView: View {
     }
 
     private func startEmulator() {
+        if cpuFamily == "ARM11" {
+            status = "iPhone 3G selected (N82AP / iphone3g). Its ARM11 QEMU backend and 8C148 firmware preparation are not integrated into this IPA yet; the imported iPhone 4 bundle cannot be used."
+            showingEngineNotice = true
+            return
+        }
         guard let bundle = preparedBundleURL else {
             status = "Import a FirmwareKit-prepared device folder first. An IPSW by itself is not bootable."
             showingBundleImporter = true
@@ -238,7 +243,7 @@ struct EmulatorSettingsView: View {
     @AppStorage("appAppearance") private var appAppearance = "system"
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
-    private let firmwareOptions = ["7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
+    private let firmwareOptions = ["4.2.1", "7.1.2", "6.1.3", "5.1.1", "8.4.1", "9.3.6"]
 
     var body: some View {
         Form {
@@ -257,6 +262,12 @@ struct EmulatorSettingsView: View {
                 Picker("CPU / device family", selection: $cpuFamily) {
                     Text("A4 · iPhone 4").tag("A4")
                     Text("A5 · iPhone 4S (experimental)").tag("A5")
+                    Text("ARM11 · iPhone 3G").tag("ARM11")
+                }
+                if cpuFamily == "ARM11" {
+                    Label("iPhone 3G uses the S5L8900 / ARM1176JZF-S platform (N82AP, iPhone1,2). Its iOS 4.2.1 firmware build is 8C148 and requires a separate iphone3g QEMU machine, BootROM, NAND/NOR preparation, and firmware keys.", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 if cpuFamily == "A5" {
                     Label("A5 / iPhone 4S is an experimental target. The current QEMU build only has the iPhone 4 A4 machine; selecting A5 does not add A5 emulation.", systemImage: "exclamationmark.triangle.fill")
@@ -273,6 +284,7 @@ struct EmulatorSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if cpuFamily != "ARM11" {
             Section("iOS 6.1.3 OTA downgrade") {
                 if cpuFamily == "A5" {
                     Toggle("Prepare iOS 6.1.3 OTA downgrade", isOn: $prepareIOS613OTA)
@@ -292,6 +304,7 @@ struct EmulatorSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+            }
             }
 
             if cpuFamily == "A5" {
@@ -345,7 +358,9 @@ struct EmulatorSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
-                Text("Only firmware compatible with the iPhone 4 GSM (n90ap) can boot. Selecting a version does not download firmware.")
+                Text(cpuFamily == "ARM11"
+                     ? "For iPhone 3G, select iOS 4.2.1 (8C148). The app currently has no integrated ARM11 restore/boot backend; selecting firmware does not make it bootable."
+                     : "Only firmware compatible with the selected iPhone 4 target can boot. Selecting a version does not download firmware.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
