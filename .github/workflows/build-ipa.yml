@@ -120,7 +120,7 @@ jobs:
           set -euo pipefail
           APP_PATH="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
           test -n "$APP_PATH"
-          test -d "$APP_PATH/PlugIns/HuskJITHelper.appex"
+          test -d "$APP_PATH/PlugIns/AstraJITHelper.appex"
           test -s "$APP_PATH/Frameworks/StikJIT.framework/StikJIT"
           test -s "$APP_PATH/husk-jit.js"
           mkdir -p "$APP_PATH/Frameworks"
