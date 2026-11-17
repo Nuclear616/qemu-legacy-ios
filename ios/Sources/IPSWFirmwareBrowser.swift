@@ -33,6 +33,10 @@ struct IPSWFirmwareBrowserView: View {
     @State private var isDownloading = false
     @State private var errorMessage: String?
     @State private var statusMessage = "Loading firmware catalog…"
+    @State private var downloadedBytes: Int64 = 0
+    @State private var totalDownloadBytes: Int64 = 0
+    @State private var downloadFraction: Double = 0
+    @State private var estimatedSecondsRemaining: Double?
 
     let deviceIdentifier: String
 
@@ -128,7 +132,29 @@ struct IPSWFirmwareBrowserView: View {
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
                     if isDownloading {
-                        ProgressView(statusMessage)
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(statusMessage)
+                                .font(.footnote)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if totalDownloadBytes > 0 {
+                                ProgressView(value: downloadFraction, total: 1)
+                                    .progressViewStyle(.linear)
+                                HStack {
+                                    Text("\(Int(downloadFraction * 100))% • \(ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: totalDownloadBytes, countStyle: .file))")
+                                    Spacer()
+                                    if let remaining = estimatedSecondsRemaining {
+                                        Text(remainingTimeText(remaining))
+                                    }
+                                }
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            } else {
+                                ProgressView()
+                                Text(ByteCountFormatter.string(fromByteCount: downloadedBytes, countStyle: .file) + " downloaded • waiting for file size")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     } else if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
@@ -151,6 +177,13 @@ struct IPSWFirmwareBrowserView: View {
                 await loadFirmware()
             }
         }
+    }
+
+
+    private func remainingTimeText(_ seconds: Double) -> String {
+        let value = max(0, Int(seconds.rounded(.up)))
+        if value < 60 { return "\(value)s left" }
+        return "\(value / 60)m \(value % 60)s left"
     }
 
     @MainActor
@@ -199,12 +232,24 @@ struct IPSWFirmwareBrowserView: View {
 
         isDownloading = true
         errorMessage = nil
+        downloadedBytes = 0
+        totalDownloadBytes = firmware.filesize ?? 0
+        downloadFraction = 0
+        estimatedSecondsRemaining = nil
         statusMessage = "Downloading iOS \(firmware.version)…"
         defer { isDownloading = false }
 
         do {
-            let (temporaryURL, response) = try await URLSession.shared.download(from: firmware.url)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let downloader = IPSWDownloadDelegate { written, expected, remaining in
+                self.downloadedBytes = written
+                if expected > 0 { self.totalDownloadBytes = expected }
+                self.downloadFraction = expected > 0
+                    ? min(1, Double(written) / Double(expected))
+                    : 0
+                self.estimatedSecondsRemaining = remaining
+            }
+            let (temporaryURL, response) = try await downloader.download(from: firmware.url)
+            guard (200..<300).contains(response.statusCode) else {
                 throw FirmwareError.downloadFailed
             }
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -213,6 +258,8 @@ struct IPSWFirmwareBrowserView: View {
                 try FileManager.default.removeItem(at: destination)
             }
             try FileManager.default.moveItem(at: temporaryURL, to: destination)
+            downloadFraction = 1
+            estimatedSecondsRemaining = 0
             statusMessage = "Download complete."
             onDownloaded(destination, firmware.version)
             dismiss()
