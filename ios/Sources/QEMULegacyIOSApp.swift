@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var isStarting = false
     @State private var status = "Ready to configure the guest"
     @State private var showingEngineNotice = false
+    @State private var showingEmulatorWindow = false
     @StateObject private var qemuRuntime = QEMURuntime()
     @State private var hostJITAvailable = false
     @Environment(\.scenePhase) private var scenePhase
@@ -58,10 +59,6 @@ struct ContentView: View {
             deviceIdentity
             deviceInfoStrip
             firmwareCard
-            if qemuRuntime.hasAttemptedStart {
-                QEMUDisplayView(runtime: qemuRuntime)
-                    .frame(height: 420)
-            }
             startButton
             statusMessage
             Spacer()
@@ -80,6 +77,12 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Emulator Settings")
             }
+        }
+        .sheet(isPresented: $showingEmulatorWindow) {
+            EmulatorPopupView(runtime: qemuRuntime)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .preferredColorScheme(selectedColorScheme)
         }
         .sheet(isPresented: $showingFirmwareBrowser) {
             IPSWFirmwareBrowserView(
@@ -349,6 +352,7 @@ struct ContentView: View {
             )
             status = "Boot configuration prepared for \(configuration.machine)."
             qemuRuntime.start(configuration: configuration)
+            showingEmulatorWindow = true
         } catch {
             status = "Could not prepare QEMU boot configuration: \(error.localizedDescription)"
         }
