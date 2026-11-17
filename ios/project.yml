@@ -97,7 +97,7 @@ targets:
       - path: Sources/AstraJITHelper
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.JITHelper
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios.AstraJITHelper
         INFOPLIST_FILE: Sources/AstraJITHelper/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         APPLICATION_EXTENSION_API_ONLY: YES
