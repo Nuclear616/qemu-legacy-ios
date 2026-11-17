@@ -173,7 +173,7 @@ struct ContentView: View {
             .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak and Cydia options will take effect after that runtime is integrated.")
+                Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak options will take effect after that runtime is integrated.")
             }
         }
         .preferredColorScheme(selectedColorScheme)
@@ -228,7 +228,7 @@ struct ContentView: View {
 
 struct EmulatorSettingsView: View {
     @AppStorage("guestStorageGiB") private var storageGiB = 8
-    @AppStorage("installCydiaAfterJailbreak") private var installCydia = false
+    @AppStorage("installCydiaAfterJailbreak") private var installJailbreak = false
     @AppStorage("allowExperimentalBoots") private var allowExperimentalBoots = false
     @AppStorage("allowUnsignedFirmware") private var allowUnsignedFirmware = false
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
@@ -369,7 +369,7 @@ struct EmulatorSettingsView: View {
                 Toggle("Use JIT when available", isOn: $preferJIT)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Podium JIT allocator")
+                        Text("StikDebug Validator")
                         Text(jitStatus)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -379,31 +379,31 @@ struct EmulatorSettingsView: View {
                         let result = qemu_podium_jit_prepare()
                         let debugger = qemu_podium_jit_debugger_attached() == 1
                         if result == 1 {
-                            jitStatus = "Podium allocator ready (RWX). QEMU TCG not connected yet."
+                            jitStatus = "JIT memory validation passed (RWX). QEMU TCG is not connected yet."
                         } else if result == 2 {
-                            jitStatus = "Podium allocator ready (StikDebug dual-map). QEMU TCG not connected yet."
+                            jitStatus = "StikDebug dual-map validation passed. QEMU TCG is not connected yet."
                         } else {
                             jitStatus = debugger
-                                ? "Debugger attached, but Podium JIT memory setup failed"
+                                ? "Debugger attached, but JIT memory validation failed"
                                 : "JIT unavailable — start JIT with StikDebug, then check again"
                         }
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("This uses Podium's real 64 MiB JIT allocator, including its StikDebug JIT26 dual-mapping path. It prepares executable memory, but QEMU TCG still needs to be wired to the allocator before guest code can run translated. On iOS 27, start JIT with a compatible StikDebug setup first.")
+                Text("StikDebug Validator checks whether the app can prepare executable JIT memory, including the StikDebug JIT26 dual-mapping path. A successful check does not mean QEMU is using JIT yet; QEMU TCG still needs to be connected to this memory. On iOS 27, start JIT with a compatible StikDebug setup before checking.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Jailbreak & packages") {
-                Toggle("Install Cydia after jailbreak", isOn: $installCydia)
-                Text("Cydia requires a compatible jailbreak and bootstrap inside the guest. This option saves your preference; automatic jailbreak and package installation are not implemented yet.")
+            Section("Jailbreak") {
+                Toggle("Install Jailbreak", isOn: $installJailbreak)
+                Text("This option saves your jailbreak preference. Jailbreak execution is not implemented yet.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                Text("Storage, firmware, unsigned-boot and Cydia settings are saved preferences. JIT availability is probed on the host, but QEMU is not yet linked and these settings are not yet applied to a running guest.")
+                Text("Storage, firmware, unsigned-boot and jailbreak settings are saved preferences. JIT availability is probed on the host, but QEMU is not yet linked and these settings are not yet applied to a running guest.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
