@@ -44,7 +44,7 @@ struct AstraJITSettingsView: View {
                 }
 
                 Button {
-                    UIApplication.shared.open(LocalDevVPN.connect)
+                    LocalDevVPN.open()
                 } label: {
                     Label(LocalDevVPN.actionTitle, systemImage: "network")
                 }
