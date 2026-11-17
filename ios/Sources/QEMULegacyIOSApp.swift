@@ -227,7 +227,7 @@ struct ContentView: View {
             }
         } label: {
             Label(
-                isStarting ? "Starting…" : (hostJITAvailable ? "Run Emulator" : "Open StikDebug"),
+                isStarting ? "Starting…" : (hostJITAvailable ? "Run Emulator" : "Enable JIT"),
                 systemImage: isStarting ? "hourglass" : (hostJITAvailable ? "power" : "bolt.fill")
             )
             .font(.headline)
