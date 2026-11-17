@@ -199,7 +199,7 @@ struct EmulatorSettingsView: View {
                         } else if result == -2 {
                             jitStatus = "MAP_JIT is unavailable in this SDK"
                         } else {
-                            jitStatus = "Unavailable (errno \\(result))"
+                            jitStatus = "Unavailable (errno \(result))"
                         }
                     }
                     .buttonStyle(.bordered)
