@@ -42,6 +42,9 @@ from pathlib import Path
 import sys
 roots = [Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])]
 replacements = [
+    ("HuskRPPairingPinCallback", "AstraRPPairingPinCallback"),
+    ("HuskRPPairing", "AstraRPPairing"),
+    ("HUSK_RPPAIRING_H", "ASTRA_RPPAIRING_H"),
     ("HuskJITHelperHandler", "AstraJITHelperHandler"),
     ("HuskJITHelper", "AstraJITHelper"),
     ("HuskBuiltInJIT", "AstraBuiltInJIT"),
@@ -117,7 +120,9 @@ cargo = root / "Cargo.toml"
 s = cargo.read_text().replace('[lib]\ncrate-type', '[lib]\nname = "astra_rppairing"\ncrate-type')
 cargo.write_text(s)
 for p in (root / "src").rglob("*.rs"):
-    s = p.read_text().replace("husk_rppairing", "astra_rppairing")
+    s = (p.read_text().replace("HuskRPPairingPinCallback", "AstraRPPairingPinCallback")
+         .replace("HuskRPPairing", "AstraRPPairing")
+         .replace("husk_rppairing", "astra_rppairing"))
     p.write_text(s)
 PY
 
@@ -135,6 +140,12 @@ export IPHONEOS_DEPLOYMENT_TARGET=17.0
 mkdir -p "$ROOT/ios/build/lib"
 cp "$VENDOR/src/target/aarch64-apple-ios/release/libastra_rppairing.a" "$ROOT/ios/build/lib/libastra_rppairing.a"
 python3 "$VENDOR/src/notices.py" "$ROOT/ios/Resources/LICENSES-rppairing-crates.txt"
+python3 - "$ROOT/ios/Resources/LICENSES-rppairing-crates.txt" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+p.write_text(p.read_text().replace("libhusk_rppairing", "libastra_rppairing"))
+PY
 
 cat > "$VENDOR/UPSTREAM-NOTICE.md" <<EOF
 # Upstream source notice
