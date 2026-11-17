@@ -4,10 +4,14 @@ Items remain incomplete until implemented and tested.
 
 ## Source integration and licensing
 
-- [x] Add upstream QEMU-iOS as a pinned Git submodule.
+- [x] Pin the generic upstream QEMU engine checkout.
+- [x] Copy the iPhone 4 GSM/A4 board and device-model source files into vendor/qemu-iphone4/.
+- [x] Copy iBoot handoff, NAND image/ECC, H2FMI and NOR/SPI source support.
+- [x] Add a staging script that overlays the copied board source into the generic QEMU engine.
 - [x] Import the upstream iPhone 4 n90 board documentation.
 - [x] Record the upstream commit and licensing location.
 - [ ] Add a reproducible source build for iOS arm64.
+- [ ] Compile the staged QEMU source and resolve any missing dependencies.
 - [ ] Audit all required upstream dependencies and licenses.
 
 ## iOS application
@@ -16,7 +20,8 @@ Items remain incomplete until implemented and tested.
 - [ ] Wire `contrib/ios-app/qemu-ios-entry.c` and `qemu-ios-ui.c` into the app.
 - [ ] Add launch screen and emulator status view.
 - [ ] Add machine, memory, CPU, and storage configuration.
-- [ ] Add safe import/export for user-supplied firmware and disk images.
+- [ ] Add safe import/export for user-supplied KBoot, NAND, NOR and firmware assets.
+- [ ] Add an optional user-supplied jailbreak/bootstrap import path for Cydia after guest boot.
 - [ ] Keep firmware out of the repository.
 
 ## GitHub Actions / IPA
@@ -47,10 +52,13 @@ Items remain incomplete until implemented and tested.
 
 | Item | Status |
 |---|---|
-| Upstream QEMU source | Pinned submodule |
+| Generic QEMU engine | Pinned checkout |
+| iPhone 4/A4 board and peripheral sources | Copied into vendor/qemu-iphone4; staging script added |
+| Bootloader handoff and NAND/NOR loader source | Copied; Apple firmware/data images not included |
 | iPhone 4 board docs | Imported |
 | Native iOS app target | Not yet present |
 | GitHub IPA workflow | Added; waits for Xcode project |
 | iPhone 4 / iOS 7.1.2 boot in this fork | Not tested |
+| Cydia | Deferred until guest boots and a compatible jailbreak/bootstrap is supplied |
 | Host JIT on iOS 27.0.1 | Not tested |
 | Installable signed IPA | Not built |
