@@ -34,8 +34,19 @@ struct IPSWFirmwareBrowserView: View {
     @State private var errorMessage: String?
     @State private var statusMessage = "Loading firmware catalog…"
 
-    private let deviceIdentifier = "iPhone3,1"
-    private let apiURL = URL(string: "https://api.ipsw.me/v4/device/iPhone3,1?type=ipsw")!
+    let deviceIdentifier: String
+
+    private var apiURL: URL {
+        URL(string: "https://api.ipsw.me/v4/device/\\(deviceIdentifier)?type=ipsw")!
+    }
+
+    private var deviceDisplayName: String {
+        switch deviceIdentifier {
+        case "iPhone1,2": return "iPhone 3G"
+        case "iPhone4,1": return "iPhone 4S"
+        default: return "iPhone 4 GSM"
+        }
+    }
 
     private var selectedFirmware: IPSWFirmware? {
         firmwares.first { $0.buildID == selectedBuildID }
@@ -55,7 +66,7 @@ struct IPSWFirmwareBrowserView: View {
                 } else {
                     List {
                         Section {
-                            Text("Showing IPSW files for iPhone 4 GSM (iPhone3,1). Signing status comes from IPSW.me and can change.")
+                            Text("Showing IPSW files for \\(deviceDisplayName) (\\(deviceIdentifier)). Signing status comes from IPSW.me and can change.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
@@ -160,7 +171,7 @@ struct IPSWFirmwareBrowserView: View {
             }
             let decoded = try JSONDecoder().decode(IPSWDeviceResponse.self, from: data)
             guard decoded.identifier == deviceIdentifier else {
-                throw FirmwareError.wrongDevice
+                throw FirmwareError.wrongDevice(deviceIdentifier)
             }
             firmwares = decoded.firmwares.sorted { $0.version.compare($1.version, options: .numeric) == .orderedDescending }
             if let match = firmwares.first(where: { $0.version == selectedVersion }) {
@@ -197,7 +208,7 @@ struct IPSWFirmwareBrowserView: View {
                 throw FirmwareError.downloadFailed
             }
             let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let destination = documents.appendingPathComponent("iPhone3,1_iOS_\(firmware.version)_\(firmware.buildID).ipsw")
+            let destination = documents.appendingPathComponent("\\(deviceIdentifier)_iOS_\\(firmware.version)_\\(firmware.buildID).ipsw")
             if FileManager.default.fileExists(atPath: destination.path) {
                 try FileManager.default.removeItem(at: destination)
             }
@@ -213,13 +224,13 @@ struct IPSWFirmwareBrowserView: View {
 
 private enum FirmwareError: LocalizedError {
     case badResponse
-    case wrongDevice
+    case wrongDevice(String)
     case downloadFailed
 
     var errorDescription: String? {
         switch self {
         case .badResponse: return "IPSW.me returned an unsuccessful response."
-        case .wrongDevice: return "The firmware catalog did not match iPhone3,1."
+        case .wrongDevice(let identifier): return "The firmware catalog did not match \\(identifier)."
         case .downloadFailed: return "Apple's firmware server did not complete the download."
         }
     }
