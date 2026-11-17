@@ -23,18 +23,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Increment and record app version
+      - name: Calculate next app version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION="$(bash scripts/bump-version.sh)"
+          LATEST_TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("astra-v"))] | sort_by(.createdAt) | last | .tagName // ""')"
+          CURRENT_VERSION="${LATEST_TAG#astra-v}"
+          if [ -z "$CURRENT_VERSION" ]; then CURRENT_VERSION="0.0.0"; fi
+          VERSION="$(bash scripts/bump-version.sh "$CURRENT_VERSION")"
           echo "ASTRA_VERSION=$VERSION" >> "$GITHUB_ENV"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "Bump Project Astra version to $VERSION"
-          git push origin "HEAD:$GITHUB_REF_NAME"
           echo "Building Project Astra $VERSION"
       - name: Verify QEMU-iOS engine source
         run: |
@@ -139,8 +137,8 @@ jobs:
       - name: Publish IPA GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ipa-build-${{ github.run_number }}
-          name: "Project Astra IPA build ${{ github.run_number }}"
+          tag_name: astra-v${{ env.ASTRA_VERSION }}
+          name: "Project Astra ${{ env.ASTRA_VERSION }}"
           prerelease: true
           generate_release_notes: true
           files: Project-Astra-unsigned.ipa
