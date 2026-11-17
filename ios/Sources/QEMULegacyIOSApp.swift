@@ -252,7 +252,7 @@ struct ContentView: View {
                 ? "StikDebug JIT is ready (dual-mapped)."
                 : "JIT memory is ready."
         } else {
-            status = "JIT is not enabled. Open StikDebug to enable JIT for Project Astra."
+            status = "JIT is not enabled. Choose a method in JIT settings to enable it."
         }
     }
 
@@ -263,46 +263,6 @@ struct ContentView: View {
             jitCoordinator.showSetup = false
         }
         status = jitCoordinator.error ?? jitCoordinator.status ?? "Requesting JIT. Follow the instructions in the JIT settings if prompted."
-    }
-
-    private func openStikDebugForJIT() {
-        guard let schemeURL = URL(string: "stikdebug://") else { return }
-        guard UIApplication.shared.canOpenURL(schemeURL) else {
-            status = "StikDebug is not installed. Opening its official GitHub page."
-            if let githubURL = URL(string: "https://github.com/StikDebug/StikDebug") {
-                UIApplication.shared.open(githubURL)
-            }
-            return
-        }
-
-        guard var components = URLComponents(string: "stikdebug://enable-jit") else {
-            status = "Could not create the StikDebug launch request."
-            return
-        }
-        var queryItems = [
-            URLQueryItem(name: "bundle-id", value: Bundle.main.bundleIdentifier ?? "com.nuclear616.qemulegacyios"),
-            URLQueryItem(name: "pid", value: String(getpid()))
-        ]
-        if #available(iOS 26.0, *) {
-            queryItems.append(URLQueryItem(name: "script-name", value: "universal.js"))
-        }
-        components.queryItems = queryItems
-        guard let requestURL = components.url else {
-            status = "Could not create the StikDebug JIT request."
-            return
-        }
-
-        status = "Requesting JIT from StikDebug. Return to Project Astra after it finishes."
-        UIApplication.shared.open(requestURL) { accepted in
-            if !accepted {
-                DispatchQueue.main.async {
-                    self.status = "StikDebug could not be opened. Opening its official GitHub page."
-                    if let githubURL = URL(string: "https://github.com/StikDebug/StikDebug") {
-                        UIApplication.shared.open(githubURL)
-                    }
-                }
-            }
-        }
     }
 
     private var statusMessage: some View {
