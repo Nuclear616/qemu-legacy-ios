@@ -71,9 +71,14 @@ if ! grep "CONFIG_IPAD1" "$ENGINE/hw/arm/meson.build" | grep -q "ipod_touch_sdio
   printf '%s\n' "" "# QEMU Legacy iOS: BCM4329 Wi-Fi for the iPhone 4 GSM board." "arm_ss.add(when: 'CONFIG_IPAD1', if_true: files('ipod_touch_sdio.c', 'bcm_fullmac.c', 'mrvl8686.c'))" >> "$ENGINE/hw/arm/meson.build"
 fi
 
-if [ -f "$ENGINE/hw/arm/trace-events" ] && ! grep -q "ipod_touch_sdio_log" "$ENGINE/hw/arm/trace-events"; then
-  echo "QEMU trace-events is missing ipod_touch_sdio_log; merge the pinned trace-events entry." >&2
+TRACE_EVENTS="$ENGINE/hw/arm/trace-events"
+TRACE_FRAGMENT="$VENDOR/upstream/hw/arm/trace-events"
+if [ ! -f "$TRACE_EVENTS" ] || [ ! -f "$TRACE_FRAGMENT" ]; then
+  echo "QEMU hw/arm/trace-events or the vendored Wi-Fi trace fragment is missing." >&2
   exit 5
+fi
+if ! grep -q "ipod_touch_sdio_log" "$TRACE_EVENTS"; then
+  cat "$TRACE_FRAGMENT" >> "$TRACE_EVENTS"
 fi
 
 echo "Generic QEMU dependencies and firmware images must be supplied separately."
