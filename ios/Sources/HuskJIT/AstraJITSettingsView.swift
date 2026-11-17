@@ -6,6 +6,7 @@ struct AstraJITSettingsView: View {
     @ObservedObject private var coordinator = JITCoordinator.shared
     @ObservedObject private var pairing = OnDevicePairing.shared
     @State private var showingPairingImporter = false
+    @State private var importError: String?
 
     var body: some View {
         Form {
@@ -82,6 +83,9 @@ struct AstraJITSettingsView: View {
                 if let error = coordinator.error {
                     Text(error).font(.footnote).foregroundStyle(.red)
                 }
+                if let importError {
+                    Text(importError).font(.footnote).foregroundStyle(.red)
+                }
                 if let problem = coordinator.connectionProblem {
                     Text(problem.message).font(.footnote).foregroundStyle(.orange)
                 }
@@ -103,7 +107,7 @@ struct AstraJITSettingsView: View {
             if case .success(let urls) = result, let url = urls.first {
                 coordinator.importPairingFile(url)
             } else if case .failure(let error) = result {
-                coordinator.error = error.localizedDescription
+                importError = error.localizedDescription
             }
         }
     }
