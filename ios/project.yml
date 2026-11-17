@@ -19,6 +19,10 @@ targets:
     sources:
       - path: Sources
       - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
+    info:
+      properties:
+        LSApplicationQueriesSchemes:
+          - stikdebug
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuclear616.qemulegacyios
