@@ -566,7 +566,7 @@ struct EmulatorSettingsView: View {
             }
 
             Section {
-                Text("Storage, firmware, unsigned-boot and jailbreak settings are saved preferences. JIT availability is probed on the host, but QEMU is not yet linked and these settings are not yet applied to a running guest.")
+                Text("Storage size and firmware choices are applied only where the current iPhone 4 runtime supports them. The startup log reports completed preparation steps; jailbreak installation is not integrated, and the JIT validator is not yet connected to QEMU's TCG allocator.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
