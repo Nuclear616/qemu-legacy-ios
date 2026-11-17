@@ -122,7 +122,9 @@ cargo.write_text(s)
 for p in (root / "src").rglob("*.rs"):
     s = (p.read_text().replace("HuskRPPairingPinCallback", "AstraRPPairingPinCallback")
          .replace("HuskRPPairing", "AstraRPPairing")
-         .replace("husk_rppairing", "astra_rppairing"))
+         .replace("husk_rppairing", "astra_rppairing")
+         .replace("Husk", "Project Astra")
+         .replace("husk", "astra"))
     p.write_text(s)
 PY
 
