@@ -40,25 +40,25 @@ The repository contains emulation code, not Apple's proprietary firmware. Supply
 The pinned QEMU-iOS revision already contains an S5L8900 machine for the
 **original iPhone 2G (M68AP)**. It is registered as:
 
-\`\`\`sh
+```sh
 -M iPhone-2G
-\`\`\`
+```
 
-The iOS engine build now enables both \`CONFIG_IPAD1\` (A4 iPhone 4) and
-\`CONFIG_IPOD_TOUCH_1G\` (S5L8900 original iPhone 2G) in the same
-\`qemu-system-arm\` build. The latter selects the shared S5L8900/S5L8720
+The iOS engine build now enables both `CONFIG_IPAD1` (A4 iPhone 4) and
+`CONFIG_IPOD_TOUCH_1G` (S5L8900 original iPhone 2G) in the same
+`qemu-system-arm` build. The latter selects the shared S5L8900/S5L8720
 device support and its required USB, NAND, display, input, and peripheral
-models. The upstream iOS UI bridge already has an \`iPhone-2G\` device profile
+models. The upstream iOS UI bridge already has an `iPhone-2G` device profile
 and routes Home/Power input to that machine.
 
 **This does not yet make the app's iPhone 2G boot flow complete.** The
 S5L8900 machine uses a different boot contract from the A4 iPhone 4:
 a boot ROM, decrypted iBoot, a NAND page-store, and a NOR image. The current
-Astra prepared-firmware importer still accepts only the N90AP \`kboot.bin\`
-plus NAND bundle and always launches \`-M iPhone-4\`. A dedicated M68AP
+Astra prepared-firmware importer still accepts only the N90AP `kboot.bin`
+plus NAND bundle and always launches `-M iPhone-4`. A dedicated M68AP
 firmware-preparation/import path and an on-device boot test are still needed.
 
 The original iPhone 2G machine must not be treated as an iPhone 3G machine.
 Although the iPhone 3G also uses an S5L8900-family SoC, it is the separate
-N82AP board and is not registered by this \`iPhone-2G\` machine. The iPhone 3G
+N82AP board and is not registered by this `iPhone-2G` machine. The iPhone 3G
 and iPhone 4S/A5 remain unsupported by the current engine.
