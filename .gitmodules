@@ -1,3 +1,8 @@
 [submodule "vendor/qemu-engine"]
 	path = vendor/qemu-engine
 	url = https://github.com/samhenrigold/qemu-ios.git
+
+[submodule "vendor/podium-a4"]
+	path = vendor/podium-a4
+	url = https://github.com/sasobhabha/Podium.git
+	branch = storage-8gib

@@ -12,6 +12,7 @@ enum PreparedFirmwareBundleError: LocalizedError {
     case missingKBoot
     case missingNAND
     case emptyNAND
+    case invalidKBoot
     case copyFailed(String)
 
     var errorDescription: String? {
@@ -23,7 +24,9 @@ enum PreparedFirmwareBundleError: LocalizedError {
         case .missingNAND:
             return "The nand folder was not found beside kboot.bin."
         case .emptyNAND:
-            return "The nand folder contains no files."
+            return "The nand folder contains no non-empty files."
+        case .invalidKBoot:
+            return "kboot.bin is missing, empty, or is not a regular file."
         case .copyFailed(let message):
             return message
         }
@@ -53,17 +56,21 @@ enum PreparedFirmwareBundleStore {
         let parent = support.appendingPathComponent("PreparedFirmware", isDirectory: true)
         try manager.createDirectory(at: parent, withIntermediateDirectories: true)
 
-        let destination = parent.appendingPathComponent("n90ap-device", isDirectory: true)
-        if manager.fileExists(atPath: destination.path) {
-            try manager.removeItem(at: destination)
-        }
+        // Never delete an existing prepared device on re-import: it may
+        // contain the user's persistent NAND/NOR overlay and guest data.
+        let preferredDestination = parent.appendingPathComponent("n90ap-device", isDirectory: true)
+        let destination = manager.fileExists(atPath: preferredDestination.path)
+            ? parent.appendingPathComponent("n90ap-device-\(UUID().uuidString)", isDirectory: true)
+            : preferredDestination
+        let staging = parent.appendingPathComponent(".import-\(UUID().uuidString)", isDirectory: true)
         do {
-            try manager.copyItem(at: source, to: destination)
-            try validate(destination)
+            try manager.copyItem(at: source, to: staging)
+            try validate(staging)
+            try manager.moveItem(at: staging, to: destination)
             return destination
         } catch {
-            if manager.fileExists(atPath: destination.path) {
-                try? manager.removeItem(at: destination)
+            if manager.fileExists(atPath: staging.path) {
+                try? manager.removeItem(at: staging)
             }
             throw PreparedFirmwareBundleError.copyFailed(error.localizedDescription)
         }
@@ -96,8 +103,15 @@ enum PreparedFirmwareBundleStore {
 
     private static func validate(_ folder: URL) throws {
         let manager = FileManager.default
-        guard manager.fileExists(atPath: folder.appendingPathComponent("kboot.bin").path) else {
+        let kboot = folder.appendingPathComponent("kboot.bin")
+        guard manager.fileExists(atPath: kboot.path) else {
             throw PreparedFirmwareBundleError.missingKBoot
+        }
+        guard let attributes = try? manager.attributesOfItem(atPath: kboot.path),
+              (attributes[.type] as? FileAttributeType) == .typeRegular,
+              let kbootSize = attributes[.size] as? NSNumber,
+              kbootSize.intValue > 0 else {
+            throw PreparedFirmwareBundleError.invalidKBoot
         }
 
         let nand = folder.appendingPathComponent("nand", isDirectory: true)
@@ -109,7 +123,9 @@ enum PreparedFirmwareBundleStore {
         let enumerator = manager.enumerator(at: nand, includingPropertiesForKeys: [.isRegularFileKey])
         var hasFile = false
         while let item = enumerator?.nextObject() as? URL {
-            if (try? item.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+            if let values = try? item.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+               values.isRegularFile == true,
+               (values.fileSize ?? 0) > 0 {
                 hasFile = true
                 break
             }

@@ -17,6 +17,7 @@ private typealias QemuFrameFunction = @convention(c) (
 ) -> Bool
 private typealias QemuTouchFunction = @convention(c) (Int32, Int32, Double, Double) -> Void
 private typealias QemuButtonFunction = @convention(c) (Int32, Bool) -> Void
+private typealias QemuReadyFunction = @convention(c) () -> Bool
 
 @MainActor
 final class QEMURuntime: ObservableObject {
@@ -24,6 +25,7 @@ final class QEMURuntime: ObservableObject {
     @Published private(set) var status = "QEMU runtime has not been started."
     @Published private(set) var hasAttemptedStart = false
     @Published private(set) var hasReceivedFrame = false
+    @Published private(set) var hasInitializedVM = false
     @Published private(set) var bootStatus = "Waiting to start…"
     @Published private(set) var startupLog: [String] = []
 
@@ -31,6 +33,8 @@ final class QEMURuntime: ObservableObject {
     private var frameFunction: QemuFrameFunction?
     private var touchFunction: QemuTouchFunction?
     private var buttonFunction: QemuButtonFunction?
+    private var readyFunction: QemuReadyFunction?
+    private var readinessTimer: DispatchSourceTimer?
     private var didStart = false
     private var frameSerial: UInt64 = 0
 
@@ -41,6 +45,7 @@ final class QEMURuntime: ObservableObject {
         }
         hasAttemptedStart = true
         hasReceivedFrame = false
+        hasInitializedVM = false
         startupLog = configuration.startupLog
         bootStatus = "Loading the iOS ARM64 QEMU engine…"
         status = bootStatus
@@ -68,7 +73,8 @@ final class QEMURuntime: ObservableObject {
               let attachSymbol = dlsym(handle, "qemu_ios_ui_attach"),
               let frameSymbol = dlsym(handle, "qemu_ios_ui_frame"),
               let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
-              let buttonSymbol = dlsym(handle, "qemu_ios_ui_button") else {
+              let buttonSymbol = dlsym(handle, "qemu_ios_ui_button"),
+              let readySymbol = dlsym(handle, "qemu_ios_ui_ready") else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
             bootStatus = status
             dlclose(handle)
@@ -81,6 +87,7 @@ final class QEMURuntime: ObservableObject {
         frameFunction = unsafeBitCast(frameSymbol, to: QemuFrameFunction.self)
         touchFunction = unsafeBitCast(touchSymbol, to: QemuTouchFunction.self)
         buttonFunction = unsafeBitCast(buttonSymbol, to: QemuButtonFunction.self)
+        readyFunction = unsafeBitCast(readySymbol, to: QemuReadyFunction.self)
 
         let callback: QemuFrameCallback = { opaque in
             guard let opaque else { return }
@@ -93,9 +100,19 @@ final class QEMURuntime: ObservableObject {
 
         didStart = true
         startupLog.append("Virtual display and hardware controls connected")
-        startupLog.append("iPhone bootloader started")
-        bootStatus = "Starting the virtual iPhone and bootloader…"
+        startupLog.append("QEMU engine thread starting")
+        bootStatus = "Starting QEMU and initializing the iPhone hardware…"
         status = bootStatus
+
+        // QEMU exposes readiness only after qemu_init() has completed and
+        // its main loop is live. Do not label the guest as booted merely
+        // because the Swift UI has opened or the dylib has loaded.
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250))
+        timer.setEventHandler { [weak self] in self?.refreshEngineReadiness() }
+        readinessTimer = timer
+        timer.resume()
+
         DispatchQueue.global(qos: .userInitiated).async {
             let arguments = ["qemu-system-arm"] + configuration.arguments
             let allocated = arguments.map { strdup($0) }
@@ -105,10 +122,20 @@ final class QEMURuntime: ObservableObject {
                 qemuMain(Int32(buffer.count), buffer.baseAddress)
             }
             DispatchQueue.main.async {
+                self.readinessTimer?.cancel()
+                self.readinessTimer = nil
                 self.bootStatus = "QEMU stopped (exit code \(result))."
                 self.status = "QEMU stopped (exit code \(result)). Restart Project Astra before starting another VM."
             }
         }
+    }
+
+    private func refreshEngineReadiness() {
+        guard !hasInitializedVM, readyFunction?() == true else { return }
+        hasInitializedVM = true
+        startupLog.append("QEMU VM initialized; the main loop is ready")
+        bootStatus = "iPhone hardware initialized · waiting for guest display output…"
+        status = bootStatus
     }
 
     func pressButton(_ button: Int32) {
