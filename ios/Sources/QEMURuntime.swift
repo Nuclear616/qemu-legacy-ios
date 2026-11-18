@@ -19,6 +19,33 @@ private typealias QemuTouchFunction = @convention(c) (Int32, Int32, Double, Doub
 private typealias QemuButtonFunction = @convention(c) (Int32, Bool) -> Void
 private typealias QemuStatusFunction = @convention(c) () -> Bool
 
+// The C bridge's ring-buffer pointer is valid for only a few guest frames.
+// Copy it on the QEMU callback thread before handing work to the main queue.
+private final class QEMUFrameCallbackState {
+    private let frameFunction: QemuFrameFunction
+    private var serial: UInt64 = 0
+    private let deliver: (Data, Int32, Int32) -> Void
+
+    init(frameFunction: QemuFrameFunction, deliver: @escaping (Data, Int32, Int32) -> Void) {
+        self.frameFunction = frameFunction
+        self.deliver = deliver
+    }
+
+    func captureLatestFrame() {
+        var pixels: UnsafeRawPointer?
+        var width: Int32 = 0
+        var height: Int32 = 0
+        guard frameFunction(&pixels, &width, &height, &serial),
+              let pixels, width > 0, height > 0 else { return }
+        let byteCount = Int(width) * Int(height) * 4
+        guard byteCount > 0, byteCount <= 256 * 1024 * 1024 else { return }
+        let copiedPixels = Data(bytes: pixels, count: byteCount)
+        DispatchQueue.main.async { [deliver] in
+            deliver(copiedPixels, width, height)
+        }
+    }
+}
+
 @MainActor
 final class QEMURuntime: ObservableObject {
     @Published private(set) var frame: CGImage?
@@ -36,8 +63,8 @@ final class QEMURuntime: ObservableObject {
     private var storageFailedFunction: QemuStatusFunction?
     private var guestShutdownFunction: QemuStatusFunction?
     private var healthTimer: DispatchSourceTimer?
+    private var frameCallbackState: QEMUFrameCallbackState?
     private var didStart = false
-    private var frameSerial: UInt64 = 0
 
     func start(configuration: QEMUBootConfiguration) {
         guard !didStart else {
@@ -93,14 +120,21 @@ final class QEMURuntime: ObservableObject {
         storageFailedFunction = unsafeBitCast(storageFailedSymbol, to: QemuStatusFunction.self)
         guestShutdownFunction = unsafeBitCast(guestShutdownSymbol, to: QemuStatusFunction.self)
 
+        guard let frameFunction else {
+            status = "QEMU frame API is unavailable."
+            bootStatus = status
+            return
+        }
+        let frameState = QEMUFrameCallbackState(frameFunction: frameFunction) { [weak self] data, width, height in
+            self?.refreshFrame(data: data, width: width, height: height)
+        }
+        frameCallbackState = frameState
         let callback: QemuFrameCallback = { opaque in
             guard let opaque else { return }
-            let runtime = Unmanaged<QEMURuntime>.fromOpaque(opaque).takeUnretainedValue()
-            DispatchQueue.main.async {
-                runtime.refreshFrame()
-            }
+            let state = Unmanaged<QEMUFrameCallbackState>.fromOpaque(opaque).takeUnretainedValue()
+            state.captureLatestFrame()
         }
-        attach(callback, Unmanaged.passUnretained(self).toOpaque())
+        attach(callback, Unmanaged.passUnretained(frameState).toOpaque())
         startHealthPolling()
 
         didStart = true
@@ -165,33 +199,24 @@ final class QEMURuntime: ObservableObject {
         touchFunction?(0, phase, min(1, max(0, x)), min(1, max(0, y)))
     }
 
-    private func refreshFrame() {
-        guard let frameFunction else { return }
-        var pixels: UnsafeRawPointer?
-        var width: Int32 = 0
-        var height: Int32 = 0
-        guard frameFunction(&pixels, &width, &height, &frameSerial),
-              let pixels, width > 0, height > 0 else { return }
-
+    private func refreshFrame(data: Data, width: Int32, height: Int32) {
+        guard width > 0, height > 0 else { return }
         let byteCount = Int(width) * Int(height) * 4
-        // QEMU publishes an initial blank panel surface before the guest has
-        // drawn anything. Keep the Apple boot splash until a genuinely lit
-        // guest frame arrives, rather than flashing to a blank black screen.
+        guard data.count == byteCount else { return }
+
+        // Keep the Apple boot splash until a genuinely lit guest frame arrives.
         if !hasReceivedFrame {
-            let bytes = pixels.assumingMemoryBound(to: UInt8.self)
+            let bytes = data.withUnsafeBytes { $0.bindMemory(to: UInt8.self) }
             var litSamples = 0
-            var samples = 0
             for offset in stride(from: 0, to: byteCount, by: 256) {
                 if bytes[offset] > 24 || bytes[offset + 1] > 24 || bytes[offset + 2] > 24 {
                     litSamples += 1
                 }
-                samples += 1
             }
             if litSamples * 64 <= (Int(width) * Int(height)) / 100 {
                 return
             }
         }
-        let data = Data(bytes: pixels, count: byteCount)
         guard let provider = CGDataProvider(data: data as CFData) else { return }
         let bitmapInfo = CGBitmapInfo(rawValue:
             CGImageAlphaInfo.premultipliedFirst.rawValue |
