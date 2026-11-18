@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "engine_version": "unpublished",
-  "source_commit": null,
-  "release_tag": "",
-  "sha256": "",
+  "engine_version": "qemu-engine-34cc4e9bd644",
+  "source_commit": "34cc4e9bd6444cb9cfaec991bc939758e5084d37",
+  "release_tag": "qemu-engine-34cc4e9bd644",
+  "sha256": "6cd348460ac84392ecc452ca6ae1b35ae128c55338110e686b86814d62b9c521",
   "architecture": "arm64",
   "library": "libqemu-arm.dylib",
   "required_symbols": [
