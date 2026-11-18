@@ -490,7 +490,7 @@ struct EmulatorSettingsView: View {
                      ? "For iPhone 2G, the final firmware is iOS 3.1.3. Its S5L8900 board and boot ROM path are not integrated yet."
                      : cpuFamily == "ARM11"
                         ? "For iPhone 3G, the final firmware is iOS 4.2.1 (8C148). Its S5L8900 board and NAND/NOR preparation are not integrated yet."
-                        : "Only firmware compatible with the selected iPhone 4 target can boot. Selecting a version does not download firmware.")
+                        : "Only the iPhone 4 A4 / n90ap target is currently bootable. The selected iOS version is not yet checked against imported bundle metadata, so import a matching FirmwareKit-prepared folder.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

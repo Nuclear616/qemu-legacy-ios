@@ -192,7 +192,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("ipa-build-"))] | sort_by(.createdAt) | last | .tagName // ""')"
+          TAG="$(gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("astra-v"))] | sort_by(.createdAt) | last | .tagName // ""')"
           if [ -n "$TAG" ]; then
             gh release upload "$TAG" prepared/*.zip prepared/SHA256SUMS --clobber
             echo "Attached prepared firmware bundles to $TAG"
