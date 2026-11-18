@@ -1,5 +1,10 @@
 name: Build iOS IPA
 on:
+  push:
+    branches:
+      - work/ios-qemu-runtime
+    paths:
+      - .github/workflows/build-ipa.yml
   workflow_dispatch:
 permissions:
   actions: read
