@@ -13,7 +13,7 @@ on:
       - 'vendor/**'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-ios-engine:
@@ -47,10 +47,41 @@ jobs:
       - name: Cross-build QEMU for iOS ARM64
         run: bash scripts/build-qemu-ios-engine.sh
 
-      - name: Upload iOS QEMU engine
-        uses: actions/upload-artifact@v4
-        with:
-          name: qemu-ios-arm64-engine
-          path: ios/Frameworks/libqemu-arm.dylib
-          if-no-files-found: error
-          retention-days: 14
+      - name: Publish versioned QEMU engine
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          LIB="ios/Frameworks/libqemu-arm.dylib"
+          ENGINE_TAG="qemu-engine-${GITHUB_SHA:0:12}"
+          ENGINE_SHA256="$(shasum -a 256 "$LIB" | awk '{print $1}')"
+          gh release create "$ENGINE_TAG" "$LIB" \
+            --target "$GITHUB_SHA" \
+            --title "Project Astra QEMU Engine ${GITHUB_SHA:0:12}" \
+            --notes "Automatically built iOS ARM64 QEMU engine. SHA-256: $ENGINE_SHA256"
+
+          git fetch origin engine-binaries
+          git worktree add "$RUNNER_TEMP/engine-manifest" origin/engine-binaries
+          python3 - "$RUNNER_TEMP/engine-manifest/manifest.json" "$ENGINE_TAG" "$ENGINE_SHA256" "$GITHUB_SHA" <<'PY'
+          import json, pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          manifest = {
+              "schema_version": 1,
+              "engine_version": sys.argv[2],
+              "source_commit": sys.argv[4],
+              "release_tag": sys.argv[2],
+              "sha256": sys.argv[3],
+              "architecture": "arm64",
+              "library": "libqemu-arm.dylib",
+              "required_symbols": [
+                  "qemu_ios_main", "qemu_ios_ui_attach", "qemu_ios_ui_frame",
+                  "qemu_ios_ui_touch", "qemu_ios_ui_button"
+              ]
+          }
+          path.write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+          git -C "$RUNNER_TEMP/engine-manifest" config user.name "github-actions[bot]"
+          git -C "$RUNNER_TEMP/engine-manifest" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$RUNNER_TEMP/engine-manifest" add manifest.json
+          git -C "$RUNNER_TEMP/engine-manifest" commit -m "Publish QEMU engine manifest $ENGINE_TAG"
+          git -C "$RUNNER_TEMP/engine-manifest" push origin HEAD:engine-binaries
