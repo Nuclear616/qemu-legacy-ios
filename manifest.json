@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
-  "engine_version": null,
-  "asset_url": null,
-  "sha256": null,
+  "engine_version": "unpublished",
+  "source_commit": null,
+  "release_tag": "",
+  "sha256": "",
   "architecture": "arm64",
   "library": "libqemu-arm.dylib",
   "required_symbols": [
