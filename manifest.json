@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "engine_version": null,
+  "asset_url": null,
+  "sha256": null,
+  "architecture": "arm64",
+  "library": "libqemu-arm.dylib",
+  "required_symbols": [
+    "qemu_ios_main",
+    "qemu_ios_ui_attach",
+    "qemu_ios_ui_frame",
+    "qemu_ios_ui_touch",
+    "qemu_ios_ui_button"
+  ]
+}
