@@ -1,6 +1,12 @@
 name: Build iOS IPA
 on:
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: "Build again even if this commit already has a successful IPA"
+        required: false
+        default: false
+        type: boolean
 permissions:
   actions: read
   contents: write
@@ -13,6 +19,8 @@ jobs:
   preflight:
     runs-on: ubuntu-slim
     timeout-minutes: 5
+    outputs:
+      skip_build: ${{ steps.duplicate.outputs.skip_build }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate build scripts and project inputs
@@ -24,9 +32,29 @@ jobs:
           test -s ios/project.yml
           test -s ios/Info.plist
           test -s scripts/vendor-stikjit.sh
+      - name: Avoid rebuilding an already successful commit
+        id: duplicate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
+        run: |
+          set -euo pipefail
+          if [[ "$FORCE_REBUILD" == "true" ]]; then
+            echo "skip_build=false" >> "$GITHUB_OUTPUT"
+            echo "Forced rebuild requested."
+            exit 0
+          fi
+          EXISTING="$(gh run list --workflow build-ipa.yml --branch "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq 'length')"
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "skip_build=true" >> "$GITHUB_OUTPUT"
+            echo "This exact commit already has a successful IPA build; skipping the expensive macOS job."
+          else
+            echo "skip_build=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build-ipa:
     needs: preflight
+    if: ${{ needs.preflight.outputs.skip_build != 'true' }}
     runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
