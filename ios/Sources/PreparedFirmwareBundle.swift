@@ -57,17 +57,23 @@ enum PreparedFirmwareBundleStore {
         try manager.createDirectory(at: parent, withIntermediateDirectories: true)
 
         let destination = parent.appendingPathComponent("n90ap-device", isDirectory: true)
-        if manager.fileExists(atPath: destination.path) {
-            try manager.removeItem(at: destination)
-        }
+        let staging = parent.appendingPathComponent(".n90ap-device-staging-\(UUID().uuidString)", isDirectory: true)
+        let backup = parent.appendingPathComponent(".n90ap-device-backup-\(UUID().uuidString)", isDirectory: true)
         do {
-            try manager.copyItem(at: source, to: destination)
-            try validate(destination)
+            try manager.copyItem(at: source, to: staging)
+            try validate(staging)
+            let hadPreviousBundle = manager.fileExists(atPath: destination.path)
+            if hadPreviousBundle { try manager.moveItem(at: destination, to: backup) }
+            do {
+                try manager.moveItem(at: staging, to: destination)
+            } catch {
+                if hadPreviousBundle { try? manager.moveItem(at: backup, to: destination) }
+                throw error
+            }
+            if hadPreviousBundle { try? manager.removeItem(at: backup) }
             return destination
         } catch {
-            if manager.fileExists(atPath: destination.path) {
-                try? manager.removeItem(at: destination)
-            }
+            try? manager.removeItem(at: staging)
             throw PreparedFirmwareBundleError.copyFailed(error.localizedDescription)
         }
     }
@@ -111,13 +117,12 @@ enum PreparedFirmwareBundleStore {
             throw PreparedFirmwareBundleError.missingNAND
         }
 
-        let enumerator = manager.enumerator(at: nand, includingPropertiesForKeys: [.isRegularFileKey])
+        let enumerator = manager.enumerator(at: nand, includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey])
         var hasFile = false
         while let item = enumerator?.nextObject() as? URL {
-            if (try? item.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
-                hasFile = true
-                break
-            }
+            let values = try item.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            if values.isSymbolicLink == true { throw PreparedFirmwareBundleError.unsafeSymlink(item.lastPathComponent) }
+            if values.isRegularFile == true { hasFile = true }
         }
         guard hasFile else { throw PreparedFirmwareBundleError.emptyNAND }
     }
