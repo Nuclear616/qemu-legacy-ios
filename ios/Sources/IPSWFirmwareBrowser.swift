@@ -1,5 +1,5 @@
 import SwiftUI
-import Foundation
+import Foundation\nimport CryptoKit
 
 private struct IPSWDeviceResponse: Decodable {
     let identifier: String
@@ -12,12 +12,12 @@ private struct IPSWFirmware: Decodable, Identifiable {
     let buildID: String
     let url: URL
     let filesize: Int64?
-    let signed: Bool?
+    let signed: Bool?\n    let sha1sum: String?
 
     var id: String { buildID }
 
     enum CodingKeys: String, CodingKey {
-        case identifier, version, url, filesize, signed
+        case identifier, version, url, filesize, signed, sha1sum
         case buildID = "buildid"
     }
 }
@@ -46,7 +46,7 @@ struct IPSWFirmwareBrowserView: View {
 
     private var deviceDisplayName: String {
         switch deviceIdentifier {
-        case "iPhone1,2": return "iPhone 3G"
+        case "iPhone1,1": return "iPhone 2G"\n        case "iPhone1,2": return "iPhone 3G"
         case "iPhone4,1": return "iPhone 4S"
         default: return "iPhone 4 GSM"
         }
@@ -180,7 +180,7 @@ struct IPSWFirmwareBrowserView: View {
     }
 
 
-    private func remainingTimeText(_ seconds: Double) -> String {
+    private static func verifySHA1(file: URL, expected: String) throws {\n        let handle = try FileHandle(forReadingFrom: file)\n        defer { try? handle.close() }\n        var hasher = Insecure.SHA1()\n        while true {\n            let chunk = try handle.read(upToCount: 4 * 1024 * 1024) ?? Data()\n            if chunk.isEmpty { break }\n            hasher.update(data: chunk)\n        }\n        let actual = hasher.finalize().map { String(format: "%02x", $0) }.joined()\n        guard actual.caseInsensitiveCompare(expected) == .orderedSame else {\n            try? FileManager.default.removeItem(at: file)\n            throw FirmwareError.checksumMismatch\n        }\n    }\n\n    private func remainingTimeText(_ seconds: Double) -> String {
         let value = max(0, Int(seconds.rounded(.up)))
         if value < 60 { return "\(value)s left" }
         return "\(value / 60)m \(value % 60)s left"
@@ -356,13 +356,13 @@ private final class IPSWDownloadDelegate: NSObject, URLSessionDownloadDelegate, 
 private enum FirmwareError: LocalizedError {
     case badResponse
     case wrongDevice(String)
-    case downloadFailed
+    case downloadFailed\n    case missingChecksum\n    case checksumMismatch
 
     var errorDescription: String? {
         switch self {
         case .badResponse: return "IPSW.me returned an unsuccessful response."
         case .wrongDevice(let identifier): return "The firmware catalog did not match \(identifier)."
-        case .downloadFailed: return "Apple's firmware server did not complete the download."
+        case .downloadFailed: return "Apple's firmware server did not complete the download."\n        case .missingChecksum: return "IPSW.me did not provide a SHA-1 checksum, so the download cannot be verified."\n        case .checksumMismatch: return "The downloaded IPSW failed SHA-1 verification and was discarded."
         }
     }
 }

@@ -68,7 +68,7 @@ final class QEMURuntime: ObservableObject {
               let attachSymbol = dlsym(handle, "qemu_ios_ui_attach"),
               let frameSymbol = dlsym(handle, "qemu_ios_ui_frame"),
               let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
-              let buttonSymbol = dlsym(handle, "qemu_ios_ui_button") else {
+              let buttonSymbol = dlsym(handle, "qemu_ios_ui_button"),\n              dlsym(handle, "qemu_ios_ui_ready") != nil,\n              dlsym(handle, "qemu_ios_ui_storage_failed") != nil,\n              dlsym(handle, "qemu_ios_ui_guest_shutdown_confirmed") != nil else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
             bootStatus = status
             dlclose(handle)
