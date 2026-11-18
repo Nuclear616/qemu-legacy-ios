@@ -69,15 +69,31 @@ jobs:
             echo "Project Astra's on-device pairing code uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
             exit 1
           fi
-      - name: Build iOS ARM64 QEMU engine
+      - name: Download and verify published QEMU engine
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          brew install glib pixman libslirp ninja meson pkgconf
-          bash scripts/build-qemu-ios-engine.sh
-          test -s ios/Frameworks/libqemu-arm.dylib
-          lipo -verify_arch arm64 ios/Frameworks/libqemu-arm.dylib
-          nm -gU ios/Frameworks/libqemu-arm.dylib | grep -q ' _qemu_ios_main$'
-          nm -gU ios/Frameworks/libqemu-arm.dylib | grep -q ' _qemu_ios_ui_button$'
+          git fetch origin engine-binaries
+          git show origin/engine-binaries:manifest.json > "$RUNNER_TEMP/qemu-engine-manifest.json"
+          ENGINE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_tag"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          ENGINE_SHA256="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          ENGINE_ARCH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["architecture"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          test "$ENGINE_ARCH" = "arm64"
+          test -n "$ENGINE_TAG"
+          test "${#ENGINE_SHA256}" -eq 64
+          mkdir -p "$RUNNER_TEMP/qemu-engine"
+          gh release download "$ENGINE_TAG" --pattern libqemu-arm.dylib --dir "$RUNNER_TEMP/qemu-engine"
+          ENGINE_FILE="$RUNNER_TEMP/qemu-engine/libqemu-arm.dylib"
+          test -s "$ENGINE_FILE"
+          printf '%s  %s\n' "$ENGINE_SHA256" "$ENGINE_FILE" | shasum -a 256 -c -
+          lipo -verify_arch arm64 "$ENGINE_FILE"
+          for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_button; do
+            nm -gU "$ENGINE_FILE" | grep -q " _$symbol$"
+          done
+          mkdir -p ios/Frameworks
+          cp "$ENGINE_FILE" ios/Frameworks/libqemu-arm.dylib
+          echo "Using published QEMU engine $ENGINE_TAG"
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Vendor Astra built-in StikJIT and build iOS pairing library
