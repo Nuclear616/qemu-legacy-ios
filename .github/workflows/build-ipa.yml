@@ -10,8 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Run inexpensive source/script checks on Linux first. This catches common
-  # configuration mistakes before consuming a macOS build minute.
+  # Cheap static checks run before any macOS build minutes are used.
   preflight:
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -23,13 +22,9 @@ jobs:
           bash -n scripts/vendor-stikjit.sh
           bash -n scripts/create-iphone4-8gb-nand.sh
           bash -n scripts/stage-qemu-iphone4.sh
-          python3 - <<'PY'
-          import pathlib, re
-          project = pathlib.Path("ios/project.yml")
-          plist = pathlib.Path("ios/Info.plist")
-          vendor = pathlib.Path("scripts/vendor-stikjit.sh")
-          assert project.is_file() and plist.is_file() and vendor.is_file()
-          assert re.search(r'^REV="[0-9a-f]{40}"
+          test -s ios/project.yml
+          test -s ios/Info.plist
+          grep -Eq '^REV="[0-9a-f]{40}"
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -180,8 +175,7 @@ jobs:
             echo "Generator should refuse to overwrite an existing NAND directory" >&2
             exit 1
           fi
-      # Reuse Xcode's module/build cache between IPA builds. The restore prefix
-      # permits incremental reuse after ordinary Swift/source edits.
+      # Reuse Xcode's build products and module cache across IPA builds.
       - name: Restore Xcode build cache
         uses: actions/cache@v4
         with:
@@ -231,9 +225,7 @@ jobs:
           gh release create "$TAG" Project-Astra-unsigned.ipa \
             --title "Project Astra $ASTRA_VERSION" \
             --notes "Automated Project Astra IPA build. This is an unsigned IPA; installation requires a compatible signing method."
-, vendor.read_text(), re.M)
-          print("Astra source and build-script preflight passed")
-          PY
+ scripts/vendor-stikjit.sh
 
   build-ipa:
     needs: preflight
