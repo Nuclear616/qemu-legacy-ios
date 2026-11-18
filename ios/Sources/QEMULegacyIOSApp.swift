@@ -98,7 +98,7 @@ struct ContentView: View {
                 onDownloaded: { url, version in
                     firmwareURL = url
                     guestIOSVersion = version
-                    status = "Downloaded iOS \(version) IPSW. QEMU runtime is not connected yet."
+                    status = "Downloaded iOS \(version) IPSW. Import the matching FirmwareKit-prepared device folder before starting the emulator." 
                 },
                 deviceIdentifier: selectedDeviceIdentifier
             )
@@ -226,15 +226,11 @@ struct ContentView: View {
 
     private var startButton: some View {
         Button {
-            if hostJITAvailable {
-                startEmulator()
-            } else {
-                enableJITUsingSelectedMethod()
-            }
+            startEmulator()
         } label: {
             Label(
-                isStarting ? "Starting…" : (hostJITAvailable ? "Run Emulator" : "Enable JIT"),
-                systemImage: isStarting ? "hourglass" : (hostJITAvailable ? "power" : "bolt.fill")
+                isStarting ? "Starting…" : "Run Emulator",
+                systemImage: isStarting ? "hourglass" : "power"
             )
             .font(.headline)
             .frame(maxWidth: .infinity)
@@ -307,6 +303,11 @@ struct ContentView: View {
     }
 
     private func startEmulator() {
+        if cpuFamily == "A5" {
+            status = "iPhone 4S (A5 / n94ap) is not supported by the current engine. The available engine only builds the iPhone 4 A4 / n90ap machine, so an iPhone 4 firmware bundle cannot be used."
+            showingEngineNotice = true
+            return
+        }
         if cpuFamily == "S5L8900-2G" || cpuFamily == "ARM11" {
             let device = cpuFamily == "S5L8900-2G" ? "iPhone 2G (m68ap)" : "iPhone 3G (N82AP)"
             status = "\(device) selected. Both use the S5L8900 / ARM1176 family, but their board profiles, boot ROM handling, and prepared firmware are not integrated into this IPA yet. The iPhone 4 bundle cannot be used."
@@ -406,7 +407,7 @@ struct EmulatorSettingsView: View {
                         Text("\(size) GiB").tag(size)
                     }
                 }
-                Text("Changes the requested virtual NAND capacity. Existing guest data may not fit if you reduce the size.")
+                Text("The imported firmware bundle determines NAND geometry. This preference does not resize existing NAND images; storage resizing is not implemented yet.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -500,7 +501,7 @@ struct EmulatorSettingsView: View {
                 } label: {
                     Label("Configure JIT methods", systemImage: "bolt.badge.clock")
                 }
-                Toggle("Use JIT when available", isOn: $preferJIT)
+                Toggle("Prefer native JIT when QEMU supports it", isOn: $preferJIT)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("JIT memory validator")
@@ -524,7 +525,7 @@ struct EmulatorSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Text("Built-in StikJIT (iOS 27+) uses Project Astra's separate helper extension and on-device pairing flow. The memory validator checks Astra's QEMU JIT region; passing it does not by itself prove that the emulator boots.")
+                Text("Built-in StikJIT (iOS 27+) uses Project Astra's separate helper extension and on-device pairing flow. QEMU currently uses its interpreter fallback. The Podium JIT memory validator is separate and is not connected to QEMU TCG, so enabling host JIT does not accelerate this engine yet.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
