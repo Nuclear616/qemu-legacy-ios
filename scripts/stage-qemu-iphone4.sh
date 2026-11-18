@@ -4,6 +4,11 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 ENGINE="${QEMU_SOURCE_DIR:-$ROOT/vendor/qemu-engine}"
 VENDOR="$ROOT/vendor/qemu-iphone4"
+BUNDLE_TOOL="$ROOT/scripts/qemu-device-source-bundle.py"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+BUNDLE="$TMP_DIR/extracted"
+ARCHIVE="${QEMU_DEVICE_SOURCES_ZIP:-$TMP_DIR/qemu-device-sources.zip}"
 
 if [ ! -d "$ENGINE" ]; then
   echo "QEMU engine source not found at: $ENGINE" >&2
@@ -17,10 +22,24 @@ if [ ! -f "$ENGINE/meson.build" ] || [ ! -f "$ENGINE/hw/arm/meson.build" ]; then
   exit 2
 fi
 
+if [ -n "${QEMU_DEVICE_SOURCES_ZIP:-}" ]; then
+  if [ ! -f "$ARCHIVE" ]; then
+    echo "QEMU device source ZIP not found: $ARCHIVE" >&2
+    exit 6
+  fi
+  echo "Using supplied device source archive: $ARCHIVE"
+else
+  python3 "$BUNDLE_TOOL" pack "$VENDOR" "$ARCHIVE"
+fi
+
+# Verify the manifest and every file hash before extracting. The helper rejects
+# path traversal, symlinks, unexpected roots, missing sources, and corrupt ZIPs.
+python3 "$BUNDLE_TOOL" extract "$ARCHIVE" "$BUNDLE"
+
 for subtree in hw/arm hw/misc include/hw/arm include/hw/misc include/hw/net; do
-  if [ -d "$VENDOR/$subtree" ]; then
+  if [ -d "$BUNDLE/$subtree" ]; then
     mkdir -p "$ENGINE/$subtree"
-    cp -R "$VENDOR/$subtree/." "$ENGINE/$subtree/"
+    cp -R "$BUNDLE/$subtree/." "$ENGINE/$subtree/"
   fi
 done
 
@@ -117,7 +136,7 @@ grep -q "config IPAD1" "$ENGINE/hw/arm/Kconfig" || {
   exit 3
 }
 
-echo "Staged copied iPhone 4 GSM (n90ap/A4) sources into: $ENGINE"
+echo "Verified ZIP bundle and staged iPhone 4 GSM (n90ap/A4) sources into: $ENGINE"
 echo "Select the GSM iPhone 4 board with -M iPhone-4 (not -M ipad1)."
 echo "N90 uses Samsung 0xB614D5AD (4 KiB pages, 128 pages/block); the 8 GiB profile uses two CEs on each of two buses."
 echo "The BCM4329 Wi-Fi bridge is enabled by default; it auto-creates user-mode NAT networking as wifi0."
@@ -128,7 +147,7 @@ echo "The CONFIG_IPAD1 Meson registration below enables the BCM4329 SDIO card mo
 python3 "$ROOT/scripts/patch-qemu-iphone4-meson.py" "$ENGINE/hw/arm/meson.build"
 
 TRACE_EVENTS="$ENGINE/hw/arm/trace-events"
-TRACE_FRAGMENT="$VENDOR/upstream/hw/arm/trace-events"
+TRACE_FRAGMENT="$BUNDLE/upstream/hw/arm/trace-events"
 if [ ! -f "$TRACE_EVENTS" ] || [ ! -f "$TRACE_FRAGMENT" ]; then
   echo "QEMU hw/arm/trace-events or the vendored Wi-Fi trace fragment is missing." >&2
   exit 5
