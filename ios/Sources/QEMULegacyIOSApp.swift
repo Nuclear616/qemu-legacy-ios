@@ -245,8 +245,8 @@ struct ContentView: View {
         hostJITAvailable = mode == 1 || mode == 2
         if hostJITAvailable {
             status = mode == 2
-                ? "StikDebug JIT is ready (dual-mapped)."
-                : "JIT memory is ready."
+                ? "Host StikDebug JIT memory is ready; QEMU still uses its interpreter."
+                : "Host JIT memory is available; QEMU still uses its interpreter."
         } else {
             status = "QEMU will use its interpreter fallback. Host JIT is not required for this build."
         }
