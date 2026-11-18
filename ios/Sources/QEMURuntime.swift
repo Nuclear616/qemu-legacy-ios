@@ -224,16 +224,17 @@ final class QEMURuntime: ObservableObject {
 
         // Keep the Apple boot splash until a genuinely lit guest frame arrives.
         if !hasReceivedFrame {
-            let bytes = data.withUnsafeBytes { $0.bindMemory(to: UInt8.self) }
-            var litSamples = 0
-            for offset in stride(from: 0, to: byteCount, by: 256) {
-                if bytes[offset] > 24 || bytes[offset + 1] > 24 || bytes[offset + 2] > 24 {
-                    litSamples += 1
+            let hasVisiblePixels = data.withUnsafeBytes { rawBytes -> Bool in
+                let bytes = rawBytes.bindMemory(to: UInt8.self)
+                var litSamples = 0
+                for offset in stride(from: 0, to: byteCount, by: 256) {
+                    if bytes[offset] > 24 || bytes[offset + 1] > 24 || bytes[offset + 2] > 24 {
+                        litSamples += 1
+                    }
                 }
+                return litSamples * 64 > (Int(width) * Int(height)) / 100
             }
-            if litSamples * 64 <= (Int(width) * Int(height)) / 100 {
-                return
-            }
+            if !hasVisiblePixels { return }
         }
         guard let provider = CGDataProvider(data: data as CFData) else { return }
         let bitmapInfo = CGBitmapInfo(rawValue:
