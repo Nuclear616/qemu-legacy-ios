@@ -36,7 +36,10 @@ fi
 # path traversal, symlinks, unexpected roots, missing sources, and corrupt ZIPs.
 python3 "$BUNDLE_TOOL" extract "$ARCHIVE" "$BUNDLE"
 
-for subtree in hw/arm hw/misc include/hw/arm include/hw/misc include/hw/net; do
+# Overlay every source/header subtree from the verified bundle. Meson/Kconfig
+# registration remains a deliberate merge below; we never replace QEMU's
+# complete registration files with partial device fragments.
+for subtree in hw include; do
   if [ -d "$BUNDLE/$subtree" ]; then
     mkdir -p "$ENGINE/$subtree"
     cp -R "$BUNDLE/$subtree/." "$ENGINE/$subtree/"
