@@ -2,6 +2,15 @@ name: Build QEMU iOS engine
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'engine/**'
+    paths:
+      - 'scripts/build-qemu-ios-engine.sh'
+      - 'scripts/stage-qemu-iphone4.sh'
+      - 'scripts/patch-qemu-iphone4-meson.py'
+      - '.github/workflows/build-qemu-ios-engine.yml'
+      - 'vendor/**'
 
 permissions:
   contents: read
