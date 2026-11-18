@@ -11,6 +11,9 @@
     "qemu_ios_ui_attach",
     "qemu_ios_ui_frame",
     "qemu_ios_ui_touch",
-    "qemu_ios_ui_button"
+    "qemu_ios_ui_button",
+    "qemu_ios_ui_ready",
+    "qemu_ios_ui_storage_failed",
+    "qemu_ios_ui_guest_shutdown_confirmed"
   ]
 }
