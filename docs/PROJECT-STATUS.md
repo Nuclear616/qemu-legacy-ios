@@ -1,18 +1,19 @@
 # Project status
 
-Last organized against branch `work/ios-qemu-runtime`. This page is a status snapshot, not a claim that untested paths work.
+Last organized against branch `work/device-emulation-generator`. This page is a status snapshot, not a claim that untested paths work.
 
 ## Target priority
 
 1. **iPhone 4 GSM (N90AP / S5L8930 / A4): active target.**
-2. iPhone 2G and 3G: future targets; separate machine/boot validation is required.
-3. iPhone 4S (A5): future target; separate A5 machine and boot support is required.
+2. **Original iPhone 2G (M68AP / S5L8900): engine source is present and now enabled in the iOS engine build configuration.** App firmware import/boot integration and a device-specific boot test remain outstanding.
+3. iPhone 3G (N82AP) and iPhone 4S (A5): future targets; separate board/machine and boot support is required.
 
 ## What exists
 
 | Area | Current state | What that does not prove |
 |---|---|---|
-| QEMU source | Full engine source is pinned in `vendor/qemu-engine`; iPhone board/peripheral source is in `vendor/qemu-iphone4`. | That the staged N90 machine boots. |
+| QEMU source | Full engine source is pinned in `vendor/qemu-engine`; iPhone 4 board/peripheral source is in `vendor/qemu-iphone4`; the pinned fork also contains an original-iPhone 2G (`-M iPhone-2G`) S5L8900 machine. | That either machine boots in the current IPA. |
+| S5L8900 engine config | The iOS build script now enables `CONFIG_IPOD_TOUCH_1G` alongside `CONFIG_IPAD1`, so the original-iPhone 2G machine is included in the next engine build. | The build has not yet been run; the app importer still only accepts the A4 N90AP bundle. |
 | Engine build | A prior engine workflow successfully compiled an arm64 iOS dylib. | That the current IPA contains and loads the matching dylib. |
 | App | SwiftUI app, firmware browser/importer, runtime bridge and status surfaces are present. | That all runtime calls work on-device. |
 | Firmware prep | FirmwareKit preparation previously produced an iPhone 4 bundle. | That the bundle boots in this QEMU build. |
