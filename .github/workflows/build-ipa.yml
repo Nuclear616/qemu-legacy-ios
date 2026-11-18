@@ -127,7 +127,7 @@ jobs:
       - name: Build unsigned app
         run: |
           set -euo pipefail
-          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" ASTRA_VERSION="$ASTRA_VERSION" ASTRA_BUNDLE_VERSION="$ASTRA_BUNDLE_VERSION" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" ASTRA_VERSION="$ASTRA_VERSION" ASTRA_BUNDLE_VERSION="$ASTRA_BUNDLE_VERSION" ASTRA_BUILD_NUMBER="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO build
       - name: Package IPA
         run: |
           set -euo pipefail
