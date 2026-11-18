@@ -111,10 +111,24 @@ jobs:
           echo "Using published QEMU engine $ENGINE_TAG"
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Vendor Astra built-in StikJIT and build iOS pairing library
+      - name: Download precompiled Astra StikJIT package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          bash scripts/vendor-stikjit.sh
+          PREBUILD_RUN="$(gh run list --workflow build-stikjit.yml --branch "$GITHUB_REF_NAME" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -z "$PREBUILD_RUN" ]; then
+            echo "No successful StikJIT prebuild exists for this branch. Run the Build StikJIT precompiled package workflow first." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/stikjit-prebuilt"
+          gh run download "$PREBUILD_RUN" --name Project-Astra-StikJIT-Prebuilt --dir "$RUNNER_TEMP/stikjit-prebuilt"
+          PACKAGE="$RUNNER_TEMP/stikjit-prebuilt/astra-stikjit-prebuilt.tar.gz"
+          test -s "$PACKAGE"
+          tar -xzf "$PACKAGE" -C "$GITHUB_WORKSPACE"
+          EXPECTED_SCRIPT_SHA="$(shasum -a 256 scripts/vendor-stikjit.sh | awk '{print $1}')"
+          ACTUAL_SCRIPT_SHA="$(python3 -c 'import json; print(json.load(open("ios/Resources/stikjit-prebuilt.json"))["vendor_script_sha256"])')"
+          test "$EXPECTED_SCRIPT_SHA" = "$ACTUAL_SCRIPT_SHA"
           test -s ios/build/lib/libastra_rppairing.a
           test -s ios/Frameworks/StikJIT.xcframework/ios-arm64/StikJIT.framework/StikJIT
           test -s ios/Resources/astra-jit.js
