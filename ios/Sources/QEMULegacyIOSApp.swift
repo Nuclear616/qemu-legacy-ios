@@ -541,6 +541,10 @@ struct EmulatorSettingsView: View {
                     "Version",
                     value: Bundle.main.infoDictionary?["AstraAppVersion"] as? String ?? Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.1"
                 )
+                LabeledContent(
+                    "Build number",
+                    value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+                )
                 Text("Build versions advance through 0.0.1–0.0.16, then roll over to the next minor version at .0. Minor versions roll over after 32, then the major version increases. After 128.32.16, versions switch to random 16-character alphanumeric IDs.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
