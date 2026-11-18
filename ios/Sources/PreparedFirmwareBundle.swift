@@ -12,7 +12,8 @@ enum PreparedFirmwareBundleError: LocalizedError {
     case missingKBoot
     case missingNAND
     case emptyNAND
-    case unsafeSymlink(String)\n    case copyFailed(String)
+    case unsafeSymlink(String)
+    case copyFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -98,7 +99,9 @@ enum PreparedFirmwareBundleStore {
 
     private static func validate(_ folder: URL) throws {
         let manager = FileManager.default
-        let kbootURL = folder.appendingPathComponent("kboot.bin")\n        guard (try? kbootURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]).isRegularFile) == true,\n              (try? kbootURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
+        let kbootURL = folder.appendingPathComponent("kboot.bin")
+        guard (try? kbootURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]).isRegularFile) == true,
+              (try? kbootURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
             throw PreparedFirmwareBundleError.missingKBoot
         }
 
