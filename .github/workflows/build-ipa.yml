@@ -2,6 +2,7 @@ name: Build iOS IPA
 on:
   workflow_dispatch:
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -16,10 +17,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Calculate deterministic app version
+      - name: Calculate version from successful IPA builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION="$(python3 - "$GITHUB_RUN_NUMBER" <<'PY'
+          SUCCESSFUL_BUILDS="$(gh run list --workflow build-ipa.yml --branch "$GITHUB_REF_NAME" --status success --limit 1000 --json databaseId --jq 'length')"
+          NEXT_VERSION_INDEX="$((SUCCESSFUL_BUILDS + 1))"
+          VERSION="$(python3 - "$NEXT_VERSION_INDEX" <<'PY'
           import sys
           n = int(sys.argv[1])
           if n < 1:
@@ -47,7 +52,7 @@ jobs:
           fi
           echo "ASTRA_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "ASTRA_BUNDLE_VERSION=$BUNDLE_VERSION" >> "$GITHUB_ENV"
-          echo "Building Project Astra $VERSION (Actions run $GITHUB_RUN_NUMBER)"
+          echo "Building Project Astra $VERSION (successful IPA build #$NEXT_VERSION_INDEX)"
       - name: Verify QEMU-iOS engine source
         run: |
           set -euo pipefail
