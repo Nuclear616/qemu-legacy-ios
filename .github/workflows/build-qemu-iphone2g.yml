@@ -1,4 +1,4 @@
-name: Build QEMU · iPhone 2G
+name: Verify QEMU · iPhone 2G target
 
 on:
   workflow_dispatch:
@@ -6,17 +6,17 @@ on:
 permissions:
   contents: read
 
-# This workflow intentionally stops before provisioning a runner until the
-# device-specific QEMU machine, board sources, and boot pipeline are implemented.
-# It must never publish an A4 binary under another device's name.
+# The iPhone 2G machine is compiled into the same multi-device engine as A4.
+# Do not spend a second macOS runner rebuilding an identical dylib.
 jobs:
   preflight:
-    name: Check Original iPhone / m68ap engine support
+    name: Confirm iPhone 2G engine integration
     runs-on: ubuntu-latest
     steps:
-      - name: Explain missing device implementation
+      - name: Report combined-engine build path
         run: |
-          echo "::error title=Device engine not implemented::Original iPhone / m68ap is selectable in Astra, but the pinned QEMU tree does not yet provide an integrated Original iPhone / m68ap board and boot pipeline."
-          echo "No macOS runner was started and no artifact was generated."
-          echo "Implement and validate this device's QEMU machine, firmware layout, and runtime ABI before enabling the expensive build."
-          exit 1
+          echo "Original iPhone 2G / M68AP is enabled through CONFIG_IPOD_TOUCH_1G."
+          echo "Machine type: -M iPhone-2G"
+          echo "It is included in the combined A4 + iPhone 2G engine artifact."
+          echo "Use the Build QEMU · Multi-device (A4 + iPhone 2G) workflow to compile the dylib."
+          echo "Astra's M68AP firmware importer and boot arguments are still pending."
