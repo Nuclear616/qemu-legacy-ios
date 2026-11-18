@@ -25,6 +25,9 @@ private final class QEMUFrameCallbackState {
     private let frameFunction: QemuFrameFunction
     private var serial: UInt64 = 0
     private let deliver: @MainActor (Data, Int32, Int32) -> Void
+    private let pendingLock = NSLock()
+    private var pendingFrame: (Data, Int32, Int32)?
+    private var deliveryScheduled = false
 
     init(frameFunction: QemuFrameFunction, deliver: @escaping @MainActor (Data, Int32, Int32) -> Void) {
         self.frameFunction = frameFunction
@@ -41,8 +44,22 @@ private final class QEMUFrameCallbackState {
         let byteCount = Int(width) * Int(height) * 4
         guard byteCount > 0, byteCount <= 256 * 1024 * 1024 else { return }
         let copiedPixels = Data(bytes: pixels, count: byteCount)
-        DispatchQueue.main.async { [deliver] in
-            deliver(copiedPixels, width, height)
+        pendingLock.lock()
+        pendingFrame = (copiedPixels, width, height)
+        let shouldSchedule = !deliveryScheduled
+        deliveryScheduled = true
+        pendingLock.unlock()
+        guard shouldSchedule else { return }
+
+        DispatchQueue.main.async { [self] in
+            pendingLock.lock()
+            let latest = pendingFrame
+            pendingFrame = nil
+            deliveryScheduled = false
+            pendingLock.unlock()
+            if let latest {
+                deliver(latest.0, latest.1, latest.2)
+            }
         }
     }
 }
