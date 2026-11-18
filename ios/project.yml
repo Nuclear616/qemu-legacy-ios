@@ -27,6 +27,7 @@ targets:
         buildPhase: resources
       - path: ../vendor/podium-a4/Podium/Emulator/CPU/DBT/Native/PodiumJIT.c
     info:
+      path: Info.plist
       properties:
         LSApplicationQueriesSchemes:
           - stikdebug
