@@ -248,7 +248,7 @@ struct ContentView: View {
                 ? "StikDebug JIT is ready (dual-mapped)."
                 : "JIT memory is ready."
         } else {
-            status = "JIT is not enabled. Choose a method in JIT settings to enable it."
+            status = "QEMU will use its interpreter fallback. Host JIT is not required for this build."
         }
     }
 
@@ -480,6 +480,9 @@ struct EmulatorSettingsView: View {
                     }
                 }
                 Toggle("Experimental boots", isOn: $allowExperimentalBoots)
+                Text("This preference only enables the unsigned-firmware option below. It does not add unsupported device targets or bypass Apple's boot-chain checks.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 Toggle("Allow unsigned firmware", isOn: $allowUnsignedFirmware)
                     .disabled(!allowExperimentalBoots)
                 if allowUnsignedFirmware {
@@ -503,6 +506,9 @@ struct EmulatorSettingsView: View {
                     Label("Configure JIT methods", systemImage: "bolt.badge.clock")
                 }
                 Toggle("Prefer native JIT when QEMU supports it", isOn: $preferJIT)
+                Text("This is a saved preference for a future native QEMU JIT backend. The current engine uses the interpreter and does not use this toggle.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("JIT memory validator")
@@ -553,7 +559,7 @@ struct EmulatorSettingsView: View {
             }
 
             Section {
-                Text("Storage size and firmware choices are applied only where the current iPhone 4 runtime supports them. The startup log reports completed preparation steps; jailbreak installation is not integrated, and the JIT validator is not yet connected to QEMU's TCG allocator.")
+                Text("The current engine uses QEMU's interpreter fallback; the separate Podium JIT validator is not connected to QEMU TCG. NAND resizing, guest audio, jailbreak installation, and Cydia installation are not implemented. New prepared bundles are checked against their firmware metadata; legacy bundles without metadata cannot be verified.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
