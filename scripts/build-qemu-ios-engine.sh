@@ -32,9 +32,27 @@ grep -q '#include "openssl/bn.h"' "$ENGINE/hw/arm/ipod_touch_pke.c"
 # The iOS SDK provides CommonCrypto, not OpenSSL headers/libraries.
 python3 "$ROOT/scripts/patch-qemu-ios-apple-aes.py" "$ENGINE/include/hw/arm/ipod_touch_aes.h"
 
-# This device configuration deliberately includes only the A4 iPhone 4 machine.
+# Build the A4 iPhone 4 and the S5L8900 original-iPhone (M68AP) machines
+# into one engine dylib. CONFIG_IPOD_TOUCH_1G selects the shared S5L8720-era
+# support code and the S5L8900 board/peripheral closure in the pinned fork.
 mkdir -p "$ENGINE/configs/devices/arm-softmmu"
-printf '%s\n' 'CONFIG_IPAD1=y' > "$ENGINE/configs/devices/arm-softmmu/ios.mak"
+printf '%s\n' 'CONFIG_IPAD1=y' 'CONFIG_IPOD_TOUCH_1G=y' > "$ENGINE/configs/devices/arm-softmmu/ios.mak"
+
+# Fail before the expensive cross-build if this pinned QEMU revision ever
+# loses the original-iPhone machine or its Meson source registration.
+grep -q '^config IPOD_TOUCH_1G$' "$ENGINE/hw/arm/Kconfig"
+grep -q "CONFIG_IPOD_TOUCH_1G.*ipod_touch_1g.c" "$ENGINE/hw/arm/meson.build"
+grep -q 'TYPE_IPHONE_2G_MACHINE' "$ENGINE/hw/arm/ipod_touch_1g.c"
+
+# Reconfigure both native bootstrap and iOS cross-build when the device
+# configuration or its source registrations change. This prevents a cached
+# A4-only Meson tree from silently omitting the newly enabled S5L8900 machine.
+DEVICE_CONFIG_SHA="$(shasum -a 256 "$ENGINE/configs/devices/arm-softmmu/ios.mak" "$ENGINE/hw/arm/Kconfig" "$ENGINE/hw/arm/meson.build" | shasum -a 256 | awk '{print $1}')"
+if [ -f "$BOOT/config-host.mak" ]; then
+    if [ ! -f "$BOOT/device-config.sha256" ] || [ "$(cat "$BOOT/device-config.sha256")" != "$DEVICE_CONFIG_SHA" ]; then
+        rm -rf "$BOOT" "$IOS"
+    fi
+fi
 
 mkdir -p "$BUILD_ROOT"
 if [ ! -f "$DEPS/lib/libglib-2.0.a" ]; then
@@ -85,6 +103,7 @@ if [ ! -f "$BOOT/config-host.mak" ]; then
         "$ENGINE/configure" --target-list=arm-softmmu --disable-docs \
             --enable-slirp --disable-werror --with-devices-arm=ios
     )
+    printf '%s\n' "$DEVICE_CONFIG_SHA" > "$BOOT/device-config.sha256"
 fi
 
 # Only the actual iOS cross-build may see the target dependency archive.
