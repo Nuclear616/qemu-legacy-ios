@@ -205,6 +205,45 @@ struct IPSWFirmwareBrowserView: View {
         return "\(value / 60)m \(value % 60)s left"
     }
 
+    private func fetchIPSWMeCatalog() async throws -> [IPSWFirmware] {
+        var request = URLRequest(url: apiURL)
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("ProjectAstra/1.0", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw FirmwareError.invalidCatalogResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw FirmwareError.catalogHTTPStatus(provider: "IPSW.me", status: http.statusCode)
+        }
+        let decoded = try JSONDecoder().decode(IPSWDeviceResponse.self, from: data)
+        guard decoded.identifier == deviceIdentifier else {
+            throw FirmwareError.wrongDevice(deviceIdentifier)
+        }
+        return decoded.firmwares
+    }
+
+    private func fetchIPSWInfoCatalog() async throws -> [IPSWFirmware] {
+        var components = URLComponents(string: "https://ipsw.info/api/v1/firmware/")!
+        components.path += deviceIdentifier
+        guard let url = components.url else {
+            throw FirmwareError.invalidCatalogResponse
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("ProjectAstra/1.0", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw FirmwareError.invalidCatalogResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw FirmwareError.catalogHTTPStatus(provider: "IPSW.info", status: http.statusCode)
+        }
+        return try JSONDecoder().decode([IPSWFirmware].self, from: data)
+    }
+
     @MainActor
     private func loadFirmware() async {
         guard !isLoading else { return }
@@ -214,26 +253,36 @@ struct IPSWFirmwareBrowserView: View {
         defer { isLoading = false }
 
         do {
-            var request = URLRequest(url: apiURL)
-            request.timeoutInterval = 30
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                throw FirmwareError.badResponse
+            let catalog: [IPSWFirmware]
+            let sourceName: String
+            do {
+                catalog = try await fetchIPSWMeCatalog()
+                sourceName = "IPSW.me"
+            } catch {
+                let primaryError = error.localizedDescription
+                do {
+                    catalog = try await fetchIPSWInfoCatalog()
+                    sourceName = "IPSW.info fallback"
+                    statusMessage = "IPSW.me unavailable; using fallback catalog."
+                } catch {
+                    throw FirmwareError.catalogUnavailable(
+                        primary: primaryError,
+                        fallback: error.localizedDescription
+                    )
+                }
             }
-            let decoded = try JSONDecoder().decode(IPSWDeviceResponse.self, from: data)
-            guard decoded.identifier == deviceIdentifier else {
-                throw FirmwareError.wrongDevice(deviceIdentifier)
-            }
-            firmwares = decoded.firmwares.sorted { $0.version.compare($1.version, options: .numeric) == .orderedDescending }
+
+            firmwares = catalog
+                .filter { $0.identifier == nil || $0.identifier == deviceIdentifier }
+                .sorted { $0.version.compare($1.version, options: .numeric) == .orderedDescending }
             if let match = firmwares.first(where: { $0.version == selectedVersion }) {
                 selectedBuildID = match.buildID
             } else {
                 selectedBuildID = firmwares.first?.buildID
             }
-            statusMessage = "Loaded \(firmwares.count) firmware entries."
+            statusMessage = "Loaded \(firmwares.count) firmware entries from \(sourceName)."
             if firmwares.isEmpty {
-                errorMessage = "IPSW.me returned no IPSW files for this device."
+                errorMessage = "The firmware catalog returned no IPSW files for \(deviceIdentifier)."
             }
         } catch {
             errorMessage = "Could not load firmware: \(error.localizedDescription)"
@@ -386,6 +435,9 @@ private enum FirmwareError: LocalizedError {
     case downloadFailed
     case missingChecksum
     case checksumMismatch
+    case invalidCatalogResponse
+    case catalogHTTPStatus(provider: String, status: Int)
+    case catalogUnavailable(primary: String, fallback: String)
 
     var errorDescription: String? {
         switch self {
@@ -394,6 +446,10 @@ private enum FirmwareError: LocalizedError {
         case .downloadFailed: return "Apple's firmware server did not complete the download."
         case .missingChecksum: return "IPSW.me did not provide a SHA-1 checksum, so the download cannot be verified."
         case .checksumMismatch: return "The downloaded IPSW failed SHA-1 verification and was discarded."
+        case .invalidCatalogResponse: return "The firmware service returned an invalid response."
+        case .catalogHTTPStatus(let provider, let status): return "\(provider) returned HTTP \(status)."
+        case .catalogUnavailable(let primary, let fallback):
+            return "Both firmware catalogs failed. IPSW.me: \(primary). IPSW.info: \(fallback)."
         }
     }
 }
