@@ -28,6 +28,7 @@ struct ContentView: View {
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
     @AppStorage("appAppearance") private var appAppearance = "system"
+    @AppStorage("liquidGlassEnabled") private var liquidGlassEnabled = false
 
     private var selectedColorScheme: ColorScheme? {
         switch appAppearance {
@@ -42,6 +43,32 @@ struct ContentView: View {
             mainScreen
         }
         .preferredColorScheme(selectedColorScheme)
+        .onAppear {
+            migrateLegacyAppearanceSetting()
+        }
+    }
+
+    @ViewBuilder
+    private func cardBackground(cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius)
+        if liquidGlassEnabled {
+            if #available(iOS 26.0, *) {
+                shape.fill(.ultraThinMaterial)
+                    .glassEffect(.regular, in: shape)
+            } else {
+                shape.fill(.thinMaterial)
+            }
+        } else {
+            shape.fill(.thinMaterial)
+        }
+    }
+
+    private func migrateLegacyAppearanceSetting() {
+        guard appAppearance == "liquidGlass" else { return }
+        if #available(iOS 26.0, *) {
+            liquidGlassEnabled = true
+        }
+        appAppearance = "system"
     }
 
     private var mainScreen: some View {
@@ -151,7 +178,7 @@ struct ContentView: View {
         .foregroundStyle(.secondary)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(cardBackground(cornerRadius: 12))
     }
 
     private var firmwareCard: some View {
@@ -198,7 +225,7 @@ struct ContentView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(cardBackground(cornerRadius: 16))
     }
 
     private var startButton: some View {
@@ -299,6 +326,7 @@ struct EmulatorSettingsView: View {
     @AppStorage("draBlobMode") private var draBlobMode = "import"
     @AppStorage("prepareIOS613OTA") private var prepareIOS613OTA = false
     @AppStorage("appAppearance") private var appAppearance = "system"
+    @AppStorage("liquidGlassEnabled") private var liquidGlassEnabled = false
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private var firmwareOptions: [String] {
@@ -320,6 +348,19 @@ struct EmulatorSettingsView: View {
                 Text("System follows your iPhone's appearance setting. Light and Dark override it for the entire emulator app.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if #available(iOS 26.0, *) {
+                    Toggle("Liquid Glass design", isOn: $liquidGlassEnabled)
+                    Text("Applies the iOS 26 Liquid Glass materials to Project Astra's custom cards. Turn it off to use the standard material styling.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Toggle("Liquid Glass design", isOn: .constant(false))
+                        .disabled(true)
+                    Text("Requires iOS 26 or later. Project Astra's standard interface remains available on iOS 17 and later.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Guest device") {
