@@ -145,7 +145,8 @@ enum PreparedFirmwareBundleStore {
 
         let nand = folder.appendingPathComponent("nand", isDirectory: true)
         var isDirectory: ObjCBool = false
-        guard manager.fileExists(atPath: nand.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+        guard manager.fileExists(atPath: nand.path, isDirectory: &isDirectory), isDirectory.boolValue,
+              (try? nand.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
             throw PreparedFirmwareBundleError.missingNAND
         }
 
@@ -158,12 +159,15 @@ enum PreparedFirmwareBundleStore {
         }
         guard hasFile else { throw PreparedFirmwareBundleError.emptyNAND }
         if let metadata = try loadMetadata(in: folder) {
-            guard metadata.schemaVersion == 1,
-                  metadata.deviceIdentifier == "iPhone3,1",
+            guard metadata.schemaVersion == 1 else {
+                throw PreparedFirmwareBundleError.invalidManifest
+            }
+            guard metadata.deviceIdentifier == "iPhone3,1",
                   metadata.board == "n90ap",
-                  metadata.machine == "iPhone-4",
-                  !metadata.version.isEmpty,
-                  !metadata.build.isEmpty else {
+                  metadata.machine == "iPhone-4" else {
+                throw PreparedFirmwareBundleError.unsupportedDevice(metadata.board)
+            }
+            guard !metadata.version.isEmpty, !metadata.build.isEmpty else {
                 throw PreparedFirmwareBundleError.invalidManifest
             }
         }
@@ -172,6 +176,10 @@ enum PreparedFirmwareBundleStore {
     private static func loadMetadata(in folder: URL) throws -> PreparedFirmwareMetadata? {
         let url = folder.appendingPathComponent("astra-firmware.json")
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard (try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]).isRegularFile) == true,
+              (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) != true else {
+            throw PreparedFirmwareBundleError.invalidManifest
+        }
         do {
             return try JSONDecoder().decode(PreparedFirmwareMetadata.self, from: Data(contentsOf: url))
         } catch {
