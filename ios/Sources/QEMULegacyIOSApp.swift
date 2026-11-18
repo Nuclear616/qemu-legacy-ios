@@ -130,7 +130,7 @@ struct ContentView: View {
         .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("This engine currently supports only the iPhone 4 A4 / n90ap machine. The iPhone 2G, 3G, and 4S require separate board and firmware implementations before they can boot.")
+            Text("The QEMU engine now includes the iPhone 4 A4 and original iPhone 2G S5L8900 machine definitions. Astra's firmware importer and launch configuration are still A4-only; the iPhone 3G and 4S still need their own board support.")
         }
     }
 
@@ -213,7 +213,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             if cpuFamily != "A4" {
                 Label(
-                    "Experimental profile only. This device's QEMU board and boot support must be installed before it can start.",
+                    "Experimental profile only. The iPhone 2G machine is included in the QEMU engine build, but Astra's M68AP firmware importer and boot arguments are not connected yet.",
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(.caption)
@@ -466,12 +466,12 @@ struct EmulatorSettingsView: View {
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                    Text("The CPU family can be shared, but the 2G and 3G are separate device targets. Neither S5L8900 board is connected to the app's QEMU runtime yet.")
+                    Text("The CPU family is shared, but these are separate boards. The original iPhone 2G machine is included in the engine build; the iPhone 3G N82AP board is not implemented, and the app's M68AP firmware/boot path is still pending.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 if cpuFamily == "A5" {
-                    Label("A5 / iPhone 4S is an experimental target. The current QEMU build only has the iPhone 4 A4 machine; selecting A5 does not add A5 emulation.", systemImage: "exclamationmark.triangle.fill")
+                    Label("A5 / iPhone 4S is still experimental. The QEMU engine build includes A4 iPhone 4 and S5L8900 original iPhone 2G machines; it does not include an A5 / iPhone 4S machine.", systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
                         .foregroundStyle(.orange)
                 }
@@ -563,7 +563,7 @@ struct EmulatorSettingsView: View {
                         .foregroundStyle(.orange)
                 }
                 Text(cpuFamily == "S5L8900-2G"
-                     ? "For iPhone 2G, the final firmware is iOS 3.1.3. Its S5L8900 board and boot ROM path are not integrated yet."
+                     ? "For iPhone 2G, the final firmware is iOS 3.1.3. Its S5L8900 machine is included in the engine build, but M68AP firmware preparation/import and app boot wiring are not integrated yet."
                      : cpuFamily == "ARM11"
                         ? "For iPhone 3G, the final firmware is iOS 4.2.1 (8C148). Its S5L8900 board and NAND/NOR preparation are not integrated yet."
                         : "Only the iPhone 4 A4 / n90ap target is currently bootable. The selected iOS version is not yet checked against imported bundle metadata, so import a matching FirmwareKit-prepared folder.")
