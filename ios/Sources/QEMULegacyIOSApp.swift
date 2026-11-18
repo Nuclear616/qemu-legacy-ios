@@ -35,6 +35,7 @@ struct ContentView: View {
     @AppStorage("guestIOSVersion") private var guestIOSVersion = "7.1.2"
     @AppStorage("guestCPUFamily") private var cpuFamily = "A4"
     @AppStorage("appAppearance") private var appAppearance = "system"
+    @AppStorage("liquidGlassEnabled") private var liquidGlassEnabled = false
     @AppStorage("installCydiaAfterJailbreak") private var installJailbreak = false
 
     private var selectedColorScheme: ColorScheme? {
@@ -52,6 +53,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(selectedColorScheme)
         .onAppear {
+            migrateLegacyAppearanceSetting()
             restoreSavedFirmwareSelections()
             refreshJITAvailability()
         }
@@ -137,7 +139,7 @@ struct ContentView: View {
     @ViewBuilder
     private func cardBackground(cornerRadius: CGFloat) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius)
-        if appAppearance == "liquidGlass" {
+        if liquidGlassEnabled {
             if #available(iOS 26.0, *) {
                 shape.fill(.ultraThinMaterial)
                     .glassEffect(.regular, in: shape)
@@ -147,6 +149,14 @@ struct ContentView: View {
         } else {
             shape.fill(.thinMaterial)
         }
+    }
+
+    private func migrateLegacyAppearanceSetting() {
+        guard appAppearance == "liquidGlass" else { return }
+        if #available(iOS 26.0, *) {
+            liquidGlassEnabled = true
+        }
+        appAppearance = "system"
     }
 
     private func restoreSavedFirmwareSelections() {
@@ -425,6 +435,7 @@ struct EmulatorSettingsView: View {
     @AppStorage("draBlobMode") private var draBlobMode = "import"
     @AppStorage("prepareIOS613OTA") private var prepareIOS613OTA = false
     @AppStorage("appAppearance") private var appAppearance = "system"
+    @AppStorage("liquidGlassEnabled") private var liquidGlassEnabled = false
 
     private let storageOptions = [1, 2, 4, 8, 16, 32]
     private var firmwareOptions: [String] {
@@ -442,11 +453,23 @@ struct EmulatorSettingsView: View {
                     Text("System").tag("system")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
-                    Text("Liquid Glass").tag("liquidGlass")
                 }
-                Text("System follows your iPhone's appearance. Light and Dark override it. Liquid Glass uses the iOS 26 glass materials when available.")
+                Text("System follows your iPhone's appearance. Light and Dark override it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if #available(iOS 26.0, *) {
+                    Toggle("Liquid Glass design", isOn: $liquidGlassEnabled)
+                    Text("Applies the iOS 26 Liquid Glass materials to Project Astra's custom cards. Turn it off to use the standard material styling.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Toggle("Liquid Glass design", isOn: .constant(false))
+                        .disabled(true)
+                    Text("Requires iOS 26 or later. Project Astra's standard interface remains available on iOS 17 and later.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Guest device") {
