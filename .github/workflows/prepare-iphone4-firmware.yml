@@ -163,7 +163,7 @@ jobs:
               "nand_file_count": len(nand_files),
               "nand_total_bytes": sum(p.stat().st_size for p in nand_files)
           }
-          (root / "astra-firmware.json").write_text(json.dumps(metadata, indent=2) + "\\n")
+          (root / "astra-firmware.json").write_text(json.dumps(metadata, indent=2) + "\n")
           PY
 
             ARCHIVE="QEMU-iPhone4-GSM-iOS-$VERSION-$BUILD.zip"

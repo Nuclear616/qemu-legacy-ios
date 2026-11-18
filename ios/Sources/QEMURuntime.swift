@@ -36,7 +36,8 @@ private final class QEMUFrameCallbackState {
         var width: Int32 = 0
         var height: Int32 = 0
         guard frameFunction(&pixels, &width, &height, &serial),
-              let pixels, width > 0, height > 0 else { return }
+              let pixels, width > 0, height > 0,
+              width <= 16384, height <= 16384 else { return }
         let byteCount = Int(width) * Int(height) * 4
         guard byteCount > 0, byteCount <= 256 * 1024 * 1024 else { return }
         let copiedPixels = Data(bytes: pixels, count: byteCount)
@@ -200,7 +201,7 @@ final class QEMURuntime: ObservableObject {
     }
 
     private func refreshFrame(data: Data, width: Int32, height: Int32) {
-        guard width > 0, height > 0 else { return }
+        guard width > 0, height > 0, width <= 16384, height <= 16384 else { return }
         let byteCount = Int(width) * Int(height) * 4
         guard data.count == byteCount else { return }
 
