@@ -22,10 +22,23 @@ jobs:
         with:
           fetch-depth: 1
           submodules: false
-      - name: Select Xcode
+      - name: Select Xcode 26 SDK
         run: |
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          set -euo pipefail
+          echo "Installed Xcode applications:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -n 1)"
+          if [ -z "$XCODE_APP" ]; then XCODE_APP="/Applications/Xcode.app"; fi
+          test -d "$XCODE_APP/Contents/Developer"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
           xcodebuild -version
+          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "Selected iPhoneOS SDK: $SDK_VERSION"
+          SDK_MAJOR="${SDK_VERSION%%.*}"
+          if [ "$SDK_MAJOR" -lt 26 ]; then
+            echo "Liquid Glass uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
+            exit 1
+          fi
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Validate 8 GB NAND preset
