@@ -178,6 +178,15 @@ jobs:
             echo "Generator should refuse to overwrite an existing NAND directory" >&2
             exit 1
           fi
+      # Reuse Xcode build products and module caches across repeated IPA builds.
+      - name: Restore Xcode build cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/DerivedData
+          key: astra-xcode-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Info.plist', 'ios/Sources/**/*.swift', 'ios/Sources/**/*.h', 'ios/Sources/**/*.m', 'ios/Resources/**', 'ios/Frameworks/**') }}
+          restore-keys: |
+            astra-xcode-${{ runner.os }}-
+
       - name: Generate project
         run: xcodegen generate --spec ios/project.yml --project ios
       - name: Build unsigned app
