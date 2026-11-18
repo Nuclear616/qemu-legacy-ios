@@ -65,6 +65,7 @@ struct ContentView: View {
         VStack(spacing: 22) {
             Spacer(minLength: 12)
             deviceIdentity
+            devicePickerCard
             deviceInfoStrip
             firmwareCard
             startButton
@@ -194,6 +195,34 @@ struct ContentView: View {
         case "A5": return "A5 · n94ap · iOS \(guestIOSVersion)"
         default: return "A4 · n90ap · iOS \(guestIOSVersion)"
         }
+    }
+
+    private var devicePickerCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Emulated iPhone", systemImage: "iphone")
+                .font(.headline)
+            Picker("Device", selection: $cpuFamily) {
+                Text("iPhone 4 · A4").tag("A4")
+                Text("iPhone 4S · A5").tag("A5")
+                Text("iPhone 2G · S5L8900").tag("S5L8900-2G")
+                Text("iPhone 3G · S5L8900").tag("ARM11")
+            }
+            .pickerStyle(.menu)
+            Text(deviceSubtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if cpuFamily != "A4" {
+                Label(
+                    "Experimental profile only. This device's QEMU board and boot support must be installed before it can start.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground(cornerRadius: 16))
     }
 
     private var deviceInfoStrip: some View {
