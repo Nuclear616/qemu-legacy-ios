@@ -23,20 +23,11 @@ concurrency:
 jobs:
   prepare:
     name: Build prepared N90AP firmware
+    # Apple IPSW-derived firmware must never be generated or published from a public repository.
+    if: ${{ github.event.repository.private == true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     steps:
-      - name: Require a private repository
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          PRIVATE="$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)"
-          if [ "$PRIVATE" != "true" ]; then
-            echo "::error::This repository is public. Prepared IPSW-derived firmware contains Apple's copyrighted firmware files. Change the repository to private before generating or storing these bundles."
-            exit 1
-          fi
-
       - name: Check out repository
         uses: actions/checkout@v4
 
