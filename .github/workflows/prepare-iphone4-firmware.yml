@@ -149,6 +149,23 @@ jobs:
             test "$(find "$OUT/nand" -type f | wc -l)" -gt 0
             echo "Validated kboot.bin and populated NAND directory for $BUILD"
 
+            python3 - "$OUT" "$BUILD" "$VERSION" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          nand_files = [p for p in (root / "nand").rglob("*") if p.is_file()]
+          metadata = {
+              "schema_version": 1,
+              "device_identifier": "iPhone3,1",
+              "board": "n90ap",
+              "machine": "iPhone-4",
+              "version": sys.argv[3],
+              "build": sys.argv[2],
+              "nand_file_count": len(nand_files),
+              "nand_total_bytes": sum(p.stat().st_size for p in nand_files)
+          }
+          (root / "astra-firmware.json").write_text(json.dumps(metadata, indent=2) + "\\n")
+          PY
+
             ARCHIVE="QEMU-iPhone4-GSM-iOS-$VERSION-$BUILD.zip"
             (cd "$RUNNER_TEMP" && zip -q -9 -r "$GITHUB_WORKSPACE/prepared/$ARCHIVE" "n90ap-$BUILD")
             SIZE="$(stat -c%s "prepared/$ARCHIVE")"

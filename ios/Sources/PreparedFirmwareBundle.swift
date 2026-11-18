@@ -13,6 +13,9 @@ enum PreparedFirmwareBundleError: LocalizedError {
     case missingNAND
     case emptyNAND
     case unsafeSymlink(String)
+    case invalidManifest
+    case unsupportedDevice(String)
+    case firmwareVersionMismatch(expected: String, actual: String)
     case copyFailed(String)
 
     var errorDescription: String? {
@@ -27,9 +30,30 @@ enum PreparedFirmwareBundleError: LocalizedError {
             return "The nand folder contains no files."
         case .unsafeSymlink(let path):
             return "The firmware folder contains an unsupported symbolic link: \(path)"
+        case .invalidManifest:
+            return "The Astra firmware metadata file is invalid or incomplete."
+        case .unsupportedDevice(let board):
+            return "This prepared bundle targets \(board), not the iPhone 4 GSM / n90ap engine."
+        case .firmwareVersionMismatch(let expected, let actual):
+            return "The selected iOS version is \(expected), but this prepared bundle contains iOS \(actual)."
         case .copyFailed(let message):
             return message
         }
+    }
+}
+
+private struct PreparedFirmwareMetadata: Decodable {
+    let schemaVersion: Int
+    let deviceIdentifier: String
+    let board: String
+    let machine: String
+    let version: String
+    let build: String
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case deviceIdentifier = "device_identifier"
+        case board, machine, version, build
     }
 }
 
@@ -78,12 +102,20 @@ enum PreparedFirmwareBundleStore {
         }
     }
 
-    static func makeBootConfiguration(bundleURL: URL, storageGiB: Int, installJailbreak: Bool = false) throws -> QEMUBootConfiguration {
+    static func makeBootConfiguration(bundleURL: URL, storageGiB: Int, expectedIOSVersion: String, installJailbreak: Bool = false) throws -> QEMUBootConfiguration {
         try validate(bundleURL)
         let manager = FileManager.default
         let overlay = bundleURL.appendingPathComponent("qemu-overlay", isDirectory: true)
         try manager.createDirectory(at: overlay, withIntermediateDirectories: true)
         var startupLog = ["Prepared firmware bundle validated", "Persistent filesystem overlay created"]
+        if let metadata = try loadMetadata(in: bundleURL) {
+            guard metadata.version == expectedIOSVersion else {
+                throw PreparedFirmwareBundleError.firmwareVersionMismatch(expected: expectedIOSVersion, actual: metadata.version)
+            }
+            startupLog.append("Verified iPhone3,1 / n90ap iOS \(metadata.version) build \(metadata.build)")
+        } else {
+            startupLog.append("Legacy bundle has no Astra metadata; firmware version could not be verified")
+        }
         if installJailbreak {
             startupLog.append("Jailbreak requested — no guest jailbreak installer is integrated, so it was skipped")
         } else {
@@ -125,5 +157,25 @@ enum PreparedFirmwareBundleStore {
             if values.isRegularFile == true { hasFile = true }
         }
         guard hasFile else { throw PreparedFirmwareBundleError.emptyNAND }
+        if let metadata = try loadMetadata(in: folder) {
+            guard metadata.schemaVersion == 1,
+                  metadata.deviceIdentifier == "iPhone3,1",
+                  metadata.board == "n90ap",
+                  metadata.machine == "iPhone-4",
+                  !metadata.version.isEmpty,
+                  !metadata.build.isEmpty else {
+                throw PreparedFirmwareBundleError.invalidManifest
+            }
+        }
+    }
+
+    private static func loadMetadata(in folder: URL) throws -> PreparedFirmwareMetadata? {
+        let url = folder.appendingPathComponent("astra-firmware.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        do {
+            return try JSONDecoder().decode(PreparedFirmwareMetadata.self, from: Data(contentsOf: url))
+        } catch {
+            throw PreparedFirmwareBundleError.invalidManifest
+        }
     }
 }

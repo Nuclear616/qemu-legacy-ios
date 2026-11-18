@@ -327,6 +327,7 @@ struct ContentView: View {
             let configuration = try PreparedFirmwareBundleStore.makeBootConfiguration(
                 bundleURL: bundle,
                 storageGiB: storageGiB,
+                expectedIOSVersion: guestIOSVersion,
                 installJailbreak: installJailbreak
             )
             status = "Boot configuration prepared for \(configuration.machine)."
