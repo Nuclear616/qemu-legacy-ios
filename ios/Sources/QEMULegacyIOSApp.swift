@@ -545,6 +545,11 @@ struct EmulatorSettingsView: View {
             }
 
             Section("About Project Astra") {
+                NavigationLink {
+                    AstraAppUpdateView()
+                } label: {
+                    Label("Check for App Updates", systemImage: "arrow.down.app")
+                }
                 LabeledContent(
                     "Version",
                     value: Bundle.main.infoDictionary?["AstraAppVersion"] as? String ?? Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.1"

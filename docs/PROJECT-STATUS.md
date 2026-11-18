@@ -16,7 +16,7 @@ Last organized against branch `work/ios-qemu-runtime`. This page is a status sna
 | Engine build | A prior engine workflow successfully compiled an arm64 iOS dylib. | That the current IPA contains and loads the matching dylib. |
 | App | SwiftUI app, firmware browser/importer, runtime bridge and status surfaces are present. | That all runtime calls work on-device. |
 | Firmware prep | FirmwareKit preparation previously produced an iPhone 4 bundle. | That the bundle boots in this QEMU build. |
-| IPA | Workflow can package the app; the current cost-saving edits have not been followed by a new build. | Installation, runtime launch, or guest boot. |
+| IPA | Workflow can package the app; the app now includes a GitHub Releases IPA checker/downloader. | Downloading does not install the IPA; installation and guest boot remain unverified. |
 | JIT | StikJIT helper and host capability probe exist. QEMU is configured for TCG interpreter fallback. | QEMU TCG JIT acceleration; Podium JIT is not wired into QEMU. |
 | Audio / jailbreak | Not implemented. | Audio playback, jailbreak, or Cydia. |
 
@@ -26,7 +26,7 @@ Last organized against branch `work/ios-qemu-runtime`. This page is a status sna
 2. Audit the runtime ABI end-to-end: exported C symbols, Swift declarations, dylib architecture/platform, linker/embed settings and runtime loading.
 3. Audit prepared-bundle validation and the exact boot inputs passed to QEMU.
 4. Audit IPA packaging so the correct engine artifact is embedded and checked before packaging.
-5. Only after those static checks, spend Actions minutes on one controlled IPA build and test it on the physical iPhone.
+5. Validate the in-app updater against a published IPA release, then spend Actions minutes on one controlled IPA build and test it on the physical iPhone.
 6. Record boot logs and observed behavior before calling the emulator functional.
 
 ## Evidence rules
