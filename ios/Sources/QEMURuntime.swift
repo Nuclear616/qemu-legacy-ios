@@ -17,6 +17,7 @@ private typealias QemuFrameFunction = @convention(c) (
 ) -> Bool
 private typealias QemuTouchFunction = @convention(c) (Int32, Int32, Double, Double) -> Void
 private typealias QemuButtonFunction = @convention(c) (Int32, Bool) -> Void
+private typealias QemuStatusFunction = @convention(c) () -> Bool
 
 @MainActor
 final class QEMURuntime: ObservableObject {
@@ -31,6 +32,10 @@ final class QEMURuntime: ObservableObject {
     private var frameFunction: QemuFrameFunction?
     private var touchFunction: QemuTouchFunction?
     private var buttonFunction: QemuButtonFunction?
+    private var readyFunction: QemuStatusFunction?
+    private var storageFailedFunction: QemuStatusFunction?
+    private var guestShutdownFunction: QemuStatusFunction?
+    private var healthTimer: DispatchSourceTimer?
     private var didStart = false
     private var frameSerial: UInt64 = 0
 
@@ -69,9 +74,9 @@ final class QEMURuntime: ObservableObject {
               let frameSymbol = dlsym(handle, "qemu_ios_ui_frame"),
               let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
               let buttonSymbol = dlsym(handle, "qemu_ios_ui_button"),
-              dlsym(handle, "qemu_ios_ui_ready") != nil,
-              dlsym(handle, "qemu_ios_ui_storage_failed") != nil,
-              dlsym(handle, "qemu_ios_ui_guest_shutdown_confirmed") != nil else {
+              let readySymbol = dlsym(handle, "qemu_ios_ui_ready"),
+              let storageFailedSymbol = dlsym(handle, "qemu_ios_ui_storage_failed"),
+              let guestShutdownSymbol = dlsym(handle, "qemu_ios_ui_guest_shutdown_confirmed") else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
             bootStatus = status
             dlclose(handle)
@@ -84,6 +89,9 @@ final class QEMURuntime: ObservableObject {
         frameFunction = unsafeBitCast(frameSymbol, to: QemuFrameFunction.self)
         touchFunction = unsafeBitCast(touchSymbol, to: QemuTouchFunction.self)
         buttonFunction = unsafeBitCast(buttonSymbol, to: QemuButtonFunction.self)
+        readyFunction = unsafeBitCast(readySymbol, to: QemuStatusFunction.self)
+        storageFailedFunction = unsafeBitCast(storageFailedSymbol, to: QemuStatusFunction.self)
+        guestShutdownFunction = unsafeBitCast(guestShutdownSymbol, to: QemuStatusFunction.self)
 
         let callback: QemuFrameCallback = { opaque in
             guard let opaque else { return }
@@ -93,6 +101,7 @@ final class QEMURuntime: ObservableObject {
             }
         }
         attach(callback, Unmanaged.passUnretained(self).toOpaque())
+        startHealthPolling()
 
         didStart = true
         startupLog.append("Virtual display and hardware controls connected")
@@ -108,9 +117,39 @@ final class QEMURuntime: ObservableObject {
                 qemuMain(Int32(buffer.count), buffer.baseAddress)
             }
             DispatchQueue.main.async {
+                self.healthTimer?.cancel()
+                self.healthTimer = nil
                 self.bootStatus = "QEMU stopped (exit code \(result))."
                 self.status = "QEMU stopped (exit code \(result)). Restart Project Astra before starting another VM."
             }
+        }
+    }
+
+    private func startHealthPolling() {
+        healthTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + .milliseconds(250), repeating: .milliseconds(500))
+        timer.setEventHandler { [weak self] in
+            Task { @MainActor in self?.pollRuntimeHealth() }
+        }
+        healthTimer = timer
+        timer.resume()
+    }
+
+    private func pollRuntimeHealth() {
+        if storageFailedFunction?() == true {
+            bootStatus = "Guest storage I/O failed."
+            status = "QEMU reported a NAND/storage I/O failure. Stop testing this firmware bundle and check the import and NAND files."
+            return
+        }
+        if guestShutdownFunction?() == true {
+            bootStatus = "Guest shut down normally."
+            status = "The emulated iPhone confirmed its power-off sequence."
+            return
+        }
+        if readyFunction?() == true && !hasReceivedFrame {
+            bootStatus = "QEMU initialized · waiting for the guest display"
+            status = bootStatus
         }
     }
 
