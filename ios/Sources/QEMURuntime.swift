@@ -24,9 +24,9 @@ private typealias QemuStatusFunction = @convention(c) () -> Bool
 private final class QEMUFrameCallbackState {
     private let frameFunction: QemuFrameFunction
     private var serial: UInt64 = 0
-    private let deliver: (Data, Int32, Int32) -> Void
+    private let deliver: @MainActor (Data, Int32, Int32) -> Void
 
-    init(frameFunction: QemuFrameFunction, deliver: @escaping (Data, Int32, Int32) -> Void) {
+    init(frameFunction: QemuFrameFunction, deliver: @escaping @MainActor (Data, Int32, Int32) -> Void) {
         self.frameFunction = frameFunction
         self.deliver = deliver
     }

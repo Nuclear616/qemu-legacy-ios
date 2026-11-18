@@ -120,7 +120,7 @@ struct ContentView: View {
         .alert("Emulator engine not connected", isPresented: $showingEngineNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Settings are saved, but this IPA does not yet contain a runnable QEMU engine or A4 boot pipeline. Firmware, storage, jailbreak options will take effect after that runtime is integrated.")
+            Text("This engine currently supports only the iPhone 4 A4 / n90ap machine. The iPhone 2G, 3G, and 4S require separate board and firmware implementations before they can boot.")
         }
     }
 
