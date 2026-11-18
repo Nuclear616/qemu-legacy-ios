@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   build-ipa:
+    if: ${{ !startsWith(github.ref, 'refs/heads/engine/') }}
     runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
