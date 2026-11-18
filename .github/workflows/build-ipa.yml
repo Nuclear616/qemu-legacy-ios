@@ -15,18 +15,13 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 90
     steps:
+      # The IPA target builds from ios/Sources and the Podium A4 source.
+      # The QEMU engine is built and published by its own workflow, so cloning
+      # its large submodule here only adds checkout time without supplying inputs.
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
-      - name: Verify QEMU-iOS engine source
-        run: |
-          set -euo pipefail
-          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-entry.c
-          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-ui.c
-          test -f vendor/qemu-engine/docs/n90/README.md
-          ENGINE_SHA="$(git -C vendor/qemu-engine rev-parse HEAD)"
-          echo "QEMU-iOS engine checked out at $ENGINE_SHA"
-          test "$ENGINE_SHA" = "db230fe8e8e4d297724b2eccdc38bdc21876696a"
+          fetch-depth: 1
+          submodules: false
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
