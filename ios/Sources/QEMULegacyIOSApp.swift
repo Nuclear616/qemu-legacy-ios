@@ -41,6 +41,7 @@ struct ContentView: View {
         switch appAppearance {
         case "light": return .light
         case "dark": return .dark
+        case "liquidGlass": return nil
         default: return nil
         }
     }
@@ -50,7 +51,10 @@ struct ContentView: View {
             mainScreen
         }
         .preferredColorScheme(selectedColorScheme)
-        .onAppear { refreshJITAvailability() }
+        .onAppear {
+            restoreSavedFirmwareSelections()
+            refreshJITAvailability()
+        }
         .onReceive(jitCoordinator.$attachGeneration) { _ in refreshJITAvailability() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshJITAvailability() }
@@ -97,8 +101,13 @@ struct ContentView: View {
                 selectedVersion: guestIOSVersion,
                 onDownloaded: { url, version in
                     firmwareURL = url
+                    do {
+                        try FirmwareSelectionStore.save(url)
+                        status = "Downloaded iOS \(version) IPSW and saved its selection. Import the matching FirmwareKit-prepared device folder before starting the emulator."
+                    } catch {
+                        status = "IPSW downloaded, but its selection could not be saved: \(error.localizedDescription)"
+                    }
                     guestIOSVersion = version
-                    status = "Downloaded iOS \(version) IPSW. Import the matching FirmwareKit-prepared device folder before starting the emulator." 
                 },
                 deviceIdentifier: selectedDeviceIdentifier
             )
@@ -121,6 +130,29 @@ struct ContentView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("This engine currently supports only the iPhone 4 A4 / n90ap machine. The iPhone 2G, 3G, and 4S require separate board and firmware implementations before they can boot.")
+        }
+    }
+
+    @ViewBuilder
+    private func cardBackground(cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius)
+        if appAppearance == "liquidGlass" {
+            if #available(iOS 26.0, *) {
+                shape.fill(.ultraThinMaterial)
+                    .glassEffect(.regular, in: shape)
+            } else {
+                shape.fill(.thinMaterial)
+            }
+        } else {
+            shape.fill(.thinMaterial)
+        }
+    }
+
+    private func restoreSavedFirmwareSelections() {
+        firmwareURL = FirmwareSelectionStore.restore()
+        preparedBundleURL = PreparedFirmwareBundleStore.restoreImportedBundle()
+        if firmwareURL != nil || preparedBundleURL != nil {
+            status = "Restored your saved firmware selections."
         }
     }
 
@@ -174,7 +206,7 @@ struct ContentView: View {
         .foregroundStyle(.secondary)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(cardBackground(cornerRadius: 12))
     }
 
     private var firmwareCard: some View {
@@ -221,7 +253,7 @@ struct ContentView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(cardBackground(cornerRadius: 16))
     }
 
     private var startButton: some View {
@@ -274,10 +306,20 @@ struct ContentView: View {
     private func handleIPSWImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
-            firmwareURL = urls.first
-            status = firmwareURL == nil
-                ? "No firmware selected."
-                : "IPSW selected. The QEMU engine still needs to be integrated."
+            guard let selectedURL = urls.first else {
+                firmwareURL = nil
+                status = "No firmware selected."
+                return
+            }
+            let accessing = selectedURL.startAccessingSecurityScopedResource()
+            defer { if accessing { selectedURL.stopAccessingSecurityScopedResource() } }
+            do {
+                try FirmwareSelectionStore.save(selectedURL)
+                firmwareURL = selectedURL
+                status = "IPSW selected and saved. The QEMU engine still needs its prepared device bundle."
+            } catch {
+                status = "IPSW selected, but its bookmark could not be saved: \(error.localizedDescription)"
+            }
         case .failure(let error):
             status = "Could not open firmware: \(error.localizedDescription)"
         }
@@ -292,7 +334,7 @@ struct ContentView: View {
             }
             do {
                 preparedBundleURL = try PreparedFirmwareBundleStore.importBundle(from: source)
-                status = "Prepared iPhone 4 firmware validated. KBoot and NAND are ready for the QEMU launch stage."
+                status = "Prepared iPhone 4 firmware validated and saved. It will be restored automatically next time."
             } catch {
                 preparedBundleURL = nil
                 status = "Prepared bundle rejected: \(error.localizedDescription)"
@@ -371,8 +413,9 @@ struct EmulatorSettingsView: View {
                     Text("System").tag("system")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
+                    Text("Liquid Glass").tag("liquidGlass")
                 }
-                Text("System follows your iPhone's appearance setting. Light and Dark override it for the entire emulator app.")
+                Text("System follows your iPhone's appearance. Light and Dark override it. Liquid Glass uses the iOS 26 glass materials when available.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

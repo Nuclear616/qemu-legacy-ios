@@ -102,6 +102,26 @@ enum PreparedFirmwareBundleStore {
         }
     }
 
+    static func restoreImportedBundle() -> URL? {
+        let manager = FileManager.default
+        guard let support = try? manager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else { return nil }
+        let bundle = support
+            .appendingPathComponent("PreparedFirmware", isDirectory: true)
+            .appendingPathComponent("n90ap-device", isDirectory: true)
+        guard manager.fileExists(atPath: bundle.path) else { return nil }
+        do {
+            try validate(bundle)
+            return bundle
+        } catch {
+            return nil
+        }
+    }
+
     static func makeBootConfiguration(bundleURL: URL, storageGiB: Int, expectedIOSVersion: String, installJailbreak: Bool = false) throws -> QEMUBootConfiguration {
         try validate(bundleURL)
         let manager = FileManager.default

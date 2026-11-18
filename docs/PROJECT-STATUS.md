@@ -48,3 +48,11 @@ Do not promote one state to the next without direct evidence. A firmware-prepara
 - Do not start duplicate workflows or cancel active runs without an explicit request.
 - Do not merge this work branch into `main` without explicit approval.
 - Prefer one consolidated change and one deliberate build at a time.
+
+
+## Recent app improvements
+
+- App Updates screen checks GitHub Releases and downloads the unsigned IPA; installation still requires a compatible signing tool.
+- Firmware selection persistence stores an IPSW security bookmark rather than duplicating a multi-gigabyte IPSW, and restores the selection on launch.
+- The prepared n90ap bundle remains in Application Support and is revalidated/restored on launch.
+- Liquid Glass is an optional appearance setting on iOS 26+; older supported OS versions fall back to material styling.
