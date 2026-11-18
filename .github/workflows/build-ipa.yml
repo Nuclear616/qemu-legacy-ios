@@ -92,7 +92,7 @@ jobs:
           ENGINE_FILE="$RUNNER_TEMP/qemu-engine/libqemu-arm.dylib"
           test -s "$ENGINE_FILE"
           printf '%s  %s\n' "$ENGINE_SHA256" "$ENGINE_FILE" | shasum -a 256 -c -
-          lipo -verify_arch arm64 "$ENGINE_FILE"
+          lipo "$ENGINE_FILE" -verify_arch arm64
           for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_button qemu_ios_ui_ready qemu_ios_ui_storage_failed qemu_ios_ui_guest_shutdown_confirmed; do
             nm -gU "$ENGINE_FILE" | grep -q " _$symbol$"
           done
@@ -160,7 +160,7 @@ jobs:
           mkdir -p "$APP_PATH/Frameworks"
           cp ios/Frameworks/libqemu-arm.dylib "$APP_PATH/Frameworks/libqemu-arm.dylib"
           test -s "$APP_PATH/Frameworks/libqemu-arm.dylib"
-          lipo -verify_arch arm64 "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          lipo "$APP_PATH/Frameworks/libqemu-arm.dylib" -verify_arch arm64
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
           (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/Project-Astra-unsigned.ipa" Payload)
