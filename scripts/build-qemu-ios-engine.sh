@@ -112,9 +112,14 @@ pkg-config = 'pkg-config'
 
 [built-in options]
 c_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
-c_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface']
+# QEMU's iPhone display bridge calls Apple's CoreMedia/CoreVideo APIs, while
+# the upstream iPod H.264 path references VideoToolbox. These frameworks must
+# be present on both C and C++ link commands so Meson tests and the final dylib
+# resolve the same iOS SDK symbols.
+IOS_MEDIA_FRAMEWORKS = ['-framework', 'CoreMedia', '-framework', 'CoreVideo', '-framework', 'VideoToolbox']
+c_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface', '-framework', 'CoreMedia', '-framework', 'CoreVideo', '-framework', 'VideoToolbox']
 cpp_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
-cpp_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface']
+cpp_link_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-L$DEPS/lib', '-framework', 'CoreFoundation', '-framework', 'Foundation', '-framework', 'OpenGLES', '-framework', 'IOSurface', '-framework', 'CoreMedia', '-framework', 'CoreVideo', '-framework', 'VideoToolbox']
 objc_args = ['-arch', 'arm64', '-isysroot', '$SDK', '-mios-version-min=17.0', '-I$DEPS/include', '-fPIC']
 
 [host_machine]
