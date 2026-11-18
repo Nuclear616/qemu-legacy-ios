@@ -24,11 +24,18 @@ than linked as a second emulator.
 
 ## Boot-state rule
 
-A loaded dylib is not a running VM, and a running QEMU main loop is not proof
-that iOS reached the lock screen. Astra now waits for QEMU's exported
-`qemu_ios_ui_ready()` signal before reporting VM initialization, then waits
-for a lit guest frame before reporting guest display activity. Neither state
-claims that the guest OS has completed booting.
+A loaded dylib is not a running VM. Astra waits for QEMU's exported
+`qemu_ios_ui_ready()` signal before reporting VM initialization, then uses
+Podium's framebuffer-sampling approach to look for a broadly bright guest
+interface. The detector samples every 37th pixel and requires more than 40%
+of samples to exceed Podium's brightness threshold. Astra deliberately labels
+this as **visible guest UI**, not a verified lock screen: Setup Assistant,
+a custom wallpaper, or a dark display can make brightness heuristics ambiguous.
+
+The runtime also polls QEMU's existing storage-failure and guest-shutdown
+signals. A storage I/O failure is surfaced as an error instead of allowing a
+later frame callback to overwrite it; a hardware-confirmed guest shutdown is
+reported separately from an unexpected QEMU exit.
 
 ## Storage rule
 

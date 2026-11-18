@@ -18,6 +18,7 @@ private typealias QemuFrameFunction = @convention(c) (
 private typealias QemuTouchFunction = @convention(c) (Int32, Int32, Double, Double) -> Void
 private typealias QemuButtonFunction = @convention(c) (Int32, Bool) -> Void
 private typealias QemuReadyFunction = @convention(c) () -> Bool
+private typealias QemuStatusFunction = @convention(c) () -> Bool
 
 @MainActor
 final class QEMURuntime: ObservableObject {
@@ -26,6 +27,9 @@ final class QEMURuntime: ObservableObject {
     @Published private(set) var hasAttemptedStart = false
     @Published private(set) var hasReceivedFrame = false
     @Published private(set) var hasInitializedVM = false
+    @Published private(set) var hasReachedGuestUI = false
+    @Published private(set) var hasGuestStorageFailure = false
+    @Published private(set) var hasGuestShutdown = false
     @Published private(set) var bootStatus = "Waiting to start…"
     @Published private(set) var startupLog: [String] = []
 
@@ -34,6 +38,8 @@ final class QEMURuntime: ObservableObject {
     private var touchFunction: QemuTouchFunction?
     private var buttonFunction: QemuButtonFunction?
     private var readyFunction: QemuReadyFunction?
+    private var storageFailureFunction: QemuStatusFunction?
+    private var guestShutdownFunction: QemuStatusFunction?
     private var readinessTimer: DispatchSourceTimer?
     private var didStart = false
     private var frameSerial: UInt64 = 0
@@ -46,6 +52,9 @@ final class QEMURuntime: ObservableObject {
         hasAttemptedStart = true
         hasReceivedFrame = false
         hasInitializedVM = false
+        hasReachedGuestUI = false
+        hasGuestStorageFailure = false
+        hasGuestShutdown = false
         startupLog = configuration.startupLog
         bootStatus = "Loading the iOS ARM64 QEMU engine…"
         status = bootStatus
@@ -74,7 +83,9 @@ final class QEMURuntime: ObservableObject {
               let frameSymbol = dlsym(handle, "qemu_ios_ui_frame"),
               let touchSymbol = dlsym(handle, "qemu_ios_ui_touch"),
               let buttonSymbol = dlsym(handle, "qemu_ios_ui_button"),
-              let readySymbol = dlsym(handle, "qemu_ios_ui_ready") else {
+              let readySymbol = dlsym(handle, "qemu_ios_ui_ready"),
+              let storageFailureSymbol = dlsym(handle, "qemu_ios_ui_storage_failed"),
+              let guestShutdownSymbol = dlsym(handle, "qemu_ios_ui_guest_shutdown_confirmed") else {
             status = "QEMU engine is missing one or more required iOS bridge symbols."
             bootStatus = status
             dlclose(handle)
@@ -88,6 +99,8 @@ final class QEMURuntime: ObservableObject {
         touchFunction = unsafeBitCast(touchSymbol, to: QemuTouchFunction.self)
         buttonFunction = unsafeBitCast(buttonSymbol, to: QemuButtonFunction.self)
         readyFunction = unsafeBitCast(readySymbol, to: QemuReadyFunction.self)
+        storageFailureFunction = unsafeBitCast(storageFailureSymbol, to: QemuStatusFunction.self)
+        guestShutdownFunction = unsafeBitCast(guestShutdownSymbol, to: QemuStatusFunction.self)
 
         let callback: QemuFrameCallback = { opaque in
             guard let opaque else { return }
@@ -131,10 +144,25 @@ final class QEMURuntime: ObservableObject {
     }
 
     private func refreshEngineReadiness() {
-        guard !hasInitializedVM, readyFunction?() == true else { return }
+        guard readyFunction?() == true else { return }
+        if storageFailureFunction?() == true, !hasGuestStorageFailure {
+            hasGuestStorageFailure = true
+            startupLog.append("QEMU reported a guest storage I/O failure")
+            bootStatus = "Guest storage I/O failed · stop the emulator before retrying"
+            status = bootStatus
+            return
+        }
+        if guestShutdownFunction?() == true, !hasGuestShutdown {
+            hasGuestShutdown = true
+            startupLog.append("The iPhone hardware reported a confirmed guest shutdown")
+            bootStatus = "iOS confirmed shutdown · QEMU is handling the power state"
+            status = bootStatus
+            return
+        }
+        guard !hasInitializedVM else { return }
         hasInitializedVM = true
         startupLog.append("QEMU VM initialized; the main loop is ready")
-        bootStatus = "iPhone hardware initialized · waiting for guest display output…"
+        bootStatus = "iPhone hardware initialized · waiting for iOS display output…"
         status = bootStatus
     }
 
@@ -151,7 +179,7 @@ final class QEMURuntime: ObservableObject {
     }
 
     private func refreshFrame() {
-        guard let frameFunction else { return }
+        guard !hasGuestStorageFailure, !hasGuestShutdown, let frameFunction else { return }
         var pixels: UnsafeRawPointer?
         var width: Int32 = 0
         var height: Int32 = 0
@@ -196,8 +224,38 @@ final class QEMURuntime: ObservableObject {
             intent: .defaultIntent
         )
         hasReceivedFrame = true
-        bootStatus = "Guest display active · iOS startup is in progress"
-        status = "Guest display active · \(width) × \(height)"
+        if !hasReachedGuestUI && Self.podiumStyleGuestUIIsVisible(pixels, width: Int(width), height: Int(height)) {
+            hasReachedGuestUI = true
+            startupLog.append("A sustained, bright guest interface was detected")
+            bootStatus = "Guest interface detected · iOS has reached visible UI output"
+            status = bootStatus
+        } else if !hasReachedGuestUI {
+            bootStatus = "Guest display active · waiting for the iOS interface…"
+            status = "Guest display active · \(width) × \(height)"
+        }
+    }
+
+    // Podium's boot detector samples the rendered framebuffer and waits for
+    // a broadly bright interface, rather than treating the first lit pixel as
+    // a completed boot. This is intentionally reported as visible guest UI,
+    // not as a verified lock screen: Setup Assistant and dark wallpapers vary.
+    private static func podiumStyleGuestUIIsVisible(
+        _ pixels: UnsafeRawPointer,
+        width: Int,
+        height: Int
+    ) -> Bool {
+        guard width > 0, height > 0 else { return false }
+        let bytes = pixels.assumingMemoryBound(to: UInt8.self)
+        let pixelCount = width * height
+        var bright = 0
+        var sampled = 0
+        for index in stride(from: 0, to: pixelCount, by: 37) {
+            let offset = index * 4
+            let luminanceSum = Int(bytes[offset]) + Int(bytes[offset + 1]) + Int(bytes[offset + 2])
+            sampled += 1
+            if luminanceSum > 3 * 48 { bright += 1 }
+        }
+        return sampled > 0 && Double(bright) / Double(sampled) > 0.4
     }
 }
 

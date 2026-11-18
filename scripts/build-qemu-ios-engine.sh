@@ -179,7 +179,7 @@ for name in ("qemu-ios-entry", "qemu-ios-ui"):
             args[i + 1] = str(depfile)
     if not any(arg == str(source) for arg in args):
         raise SystemExit(f"Could not replace system/main.c with {source}")
-    args.extend(["-I", str(engine / "contrib/ios-app"), "-fPIC"])
+    args.extend(["-I", str(engine / "target/arm"), "-I", str(engine / "contrib/ios-app"), "-fPIC"])
     print("Compiling", source)
     subprocess.run(args, cwd=entry["directory"], check=True)
 PY
@@ -248,7 +248,7 @@ LIB="$ROOT/ios/Frameworks/libqemu-arm.dylib"
 test -s "$LIB"
 vtool -show-build-version "$LIB"
 symbols="$(nm -gU "$LIB")"
-for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch; do
+for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_ready qemu_ios_ui_storage_failed qemu_ios_ui_guest_shutdown_confirmed; do
     if ! grep -q " _$symbol$" <<<"$symbols"; then
         echo "Missing exported iOS runtime symbol: $symbol" >&2
         exit 5
