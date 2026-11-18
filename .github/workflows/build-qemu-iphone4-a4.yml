@@ -1,4 +1,4 @@
-name: Build QEMU · iPhone 4 (A4)
+name: Build QEMU · Multi-device (A4 + iPhone 2G)
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
       - name: Upload iOS QEMU engine
         uses: actions/upload-artifact@v4
         with:
-          name: qemu-ios-iphone4-a4
+          name: qemu-ios-arm64-a4-iphone2g
           path: ios/Frameworks/libqemu-arm.dylib
           if-no-files-found: error
           retention-days: 14
