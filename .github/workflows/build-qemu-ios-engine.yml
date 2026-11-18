@@ -32,10 +32,22 @@ jobs:
             echo "Project Astra's on-device pairing code uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
             exit 1
           fi
+      # Keep Meson/Ninja outputs and downloaded target dependencies between
+      # manual engine builds. The build root is stable so restored paths remain valid.
+      - name: Restore QEMU iOS build cache
+        uses: actions/cache@v4
+        with:
+          path: .build/qemu-ios
+          key: astra-qemu-ios-${{ runner.os }}-${{ hashFiles('scripts/build-qemu-ios-engine.sh', 'scripts/stage-qemu-iphone4.sh', 'scripts/patch-qemu-ios-apple-aes.py') }}
+          restore-keys: |
+            astra-qemu-ios-${{ runner.os }}-
+
       - name: Install native QEMU build dependencies
         run: brew install glib pixman libslirp ninja meson pkgconf
 
       - name: Cross-build QEMU for iOS ARM64
+        env:
+          QEMU_IOS_BUILD_ROOT: ${{ github.workspace }}/.build/qemu-ios
         run: bash scripts/build-qemu-ios-engine.sh
 
       - name: Upload iOS QEMU engine

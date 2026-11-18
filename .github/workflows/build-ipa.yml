@@ -10,7 +10,233 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Run inexpensive source/script checks on Linux first. This catches common
+  # configuration mistakes before consuming a macOS build minute.
+  preflight:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate build scripts and project inputs
+        run: |
+          set -euo pipefail
+          bash -n scripts/vendor-stikjit.sh
+          bash -n scripts/create-iphone4-8gb-nand.sh
+          bash -n scripts/stage-qemu-iphone4.sh
+          python3 - <<'PY'
+          import pathlib, re
+          project = pathlib.Path("ios/project.yml")
+          plist = pathlib.Path("ios/Info.plist")
+          vendor = pathlib.Path("scripts/vendor-stikjit.sh")
+          assert project.is_file() and plist.is_file() and vendor.is_file()
+          assert re.search(r'^REV="[0-9a-f]{40}"
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Calculate version from successful IPA builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SUCCESSFUL_BUILDS="$(gh run list --workflow build-ipa.yml --branch "$GITHUB_REF_NAME" --status success --limit 1000 --json databaseId --jq 'length')"
+          NEXT_VERSION_INDEX="$((SUCCESSFUL_BUILDS + 1))"
+          VERSION="$(python3 - "$NEXT_VERSION_INDEX" <<'PY'
+          import sys
+          n = int(sys.argv[1])
+          if n < 1:
+              raise SystemExit("GITHUB_RUN_NUMBER must be positive")
+          if n <= 16:
+              major, minor, patch = 0, 0, n
+          else:
+              remaining = n - 17
+              raw_minor = 1 + remaining // 17
+              patch = remaining % 17
+              major = raw_minor // 33
+              minor = raw_minor % 33
+          if major > 128 or (major, minor, patch) > (128, 32, 16):
+              import secrets, string
+              alphabet = string.digits + string.ascii_uppercase + string.ascii_lowercase
+              print("".join(secrets.choice(alphabet) for _ in range(16)))
+          else:
+              print(f"{major}.{minor}.{patch}")
+          PY
+          )"
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BUNDLE_VERSION="$VERSION"
+          else
+            BUNDLE_VERSION="128.32.16"
+          fi
+          echo "ASTRA_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ASTRA_BUNDLE_VERSION=$BUNDLE_VERSION" >> "$GITHUB_ENV"
+          echo "Building Project Astra $VERSION (successful IPA build #$NEXT_VERSION_INDEX)"
+      - name: Verify QEMU-iOS engine source
+        run: |
+          set -euo pipefail
+          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-entry.c
+          test -f vendor/qemu-engine/contrib/ios-app/qemu-ios-ui.c
+          test -f vendor/qemu-engine/docs/n90/README.md
+          ENGINE_SHA="$(git -C vendor/qemu-engine rev-parse HEAD)"
+          echo "QEMU-iOS engine checked out at $ENGINE_SHA"
+          test "$ENGINE_SHA" = "db230fe8e8e4d297724b2eccdc38bdc21876696a"
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          echo "Installed Xcode applications:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          XCODE_APP="$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' -print | sort -V | tail -n 1)"
+          if [ -z "$XCODE_APP" ]; then XCODE_APP="/Applications/Xcode.app"; fi
+          test -d "$XCODE_APP/Contents/Developer"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "Selected iPhoneOS SDK: $SDK_VERSION"
+          SDK_MAJOR="${SDK_VERSION%%.*}"
+          if [ "$SDK_MAJOR" -lt 26 ]; then
+            echo "Project Astra's on-device pairing code uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
+            exit 1
+          fi
+      - name: Download and verify published QEMU engine
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch origin engine-binaries
+          git show origin/engine-binaries:manifest.json > "$RUNNER_TEMP/qemu-engine-manifest.json"
+          ENGINE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_tag"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          ENGINE_SHA256="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          ENGINE_ARCH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["architecture"])' "$RUNNER_TEMP/qemu-engine-manifest.json")"
+          test "$ENGINE_ARCH" = "arm64"
+          test -n "$ENGINE_TAG"
+          test "${#ENGINE_SHA256}" -eq 64
+          mkdir -p "$RUNNER_TEMP/qemu-engine"
+          gh release download "$ENGINE_TAG" --pattern libqemu-arm.dylib --dir "$RUNNER_TEMP/qemu-engine"
+          ENGINE_FILE="$RUNNER_TEMP/qemu-engine/libqemu-arm.dylib"
+          test -s "$ENGINE_FILE"
+          printf '%s  %s\n' "$ENGINE_SHA256" "$ENGINE_FILE" | shasum -a 256 -c -
+          lipo "$ENGINE_FILE" -verify_arch arm64
+          for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_button qemu_ios_ui_ready qemu_ios_ui_storage_failed qemu_ios_ui_guest_shutdown_confirmed; do
+            nm -gU "$ENGINE_FILE" | grep -q " _$symbol$"
+          done
+          mkdir -p ios/Frameworks
+          cp "$ENGINE_FILE" ios/Frameworks/libqemu-arm.dylib
+          echo "Using published QEMU engine $ENGINE_TAG"
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Download precompiled Astra StikJIT package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PREBUILD_RUN="$(gh run list --workflow build-stikjit.yml --branch "$GITHUB_REF_NAME" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -z "$PREBUILD_RUN" ]; then
+            echo "No successful StikJIT prebuild exists for this branch. Run the Build StikJIT precompiled package workflow first." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/stikjit-prebuilt"
+          gh run download "$PREBUILD_RUN" --name Project-Astra-StikJIT-Prebuilt --dir "$RUNNER_TEMP/stikjit-prebuilt"
+          PACKAGE="$RUNNER_TEMP/stikjit-prebuilt/astra-stikjit-prebuilt.tar.gz"
+          test -s "$PACKAGE"
+          tar -xzf "$PACKAGE" -C "$GITHUB_WORKSPACE"
+          EXPECTED_SCRIPT_SHA="$(shasum -a 256 scripts/vendor-stikjit.sh | awk '{print $1}')"
+          ACTUAL_SCRIPT_SHA="$(python3 -c 'import json; print(json.load(open("ios/Resources/stikjit-prebuilt.json"))["vendor_script_sha256"])')"
+          test "$EXPECTED_SCRIPT_SHA" = "$ACTUAL_SCRIPT_SHA"
+          test -s ios/build/lib/libastra_rppairing.a
+          test -s ios/Frameworks/StikJIT.xcframework/ios-arm64/StikJIT.framework/StikJIT
+          test -s ios/Resources/astra-jit.js
+          test -s ios/Sources/AstraJITHelper/AstraJITHelper.swift
+      - name: Validate 8 GB NAND preset
+        run: |
+          set -euo pipefail
+          NAND_DIR="$RUNNER_TEMP/n90-8gb-nand-test"
+          sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"
+          python3 - "$NAND_DIR" <<'PY'
+          import json
+          import pathlib
+          import sys
+          root = pathlib.Path(sys.argv[1])
+          g = json.loads((root / "geometry.json").read_text())
+          assert g == {
+              "storage_format": "nand-xor-ff-v2",
+              "chip_id": "b614d5ad",
+              "buses": 2,
+              "ce_per_bus": 2,
+              "blocks_per_ce": 4096,
+              "pages_per_block": 128,
+              "page_bytes": 4096,
+              "spare_bytes": 128,
+          }
+          pages_per_ce = g["blocks_per_ce"] * g["pages_per_block"]
+          expected_file_size = pages_per_ce * (g["page_bytes"] + g["spare_bytes"])
+          expected_capacity = g["buses"] * g["ce_per_bus"] * pages_per_ce * g["page_bytes"]
+          assert expected_capacity == 8 * 1024**3
+          files = sorted(root.glob("bus*-ce*.pages"))
+          assert len(files) == 4
+          assert all(p.stat().st_size == expected_file_size for p in files)
+          print(f"Verified {expected_capacity} bytes of raw NAND data capacity")
+          PY
+          if sh scripts/create-iphone4-8gb-nand.sh "$NAND_DIR"; then
+            echo "Generator should refuse to overwrite an existing NAND directory" >&2
+            exit 1
+          fi
+      # Reuse Xcode's module/build cache between IPA builds. The restore prefix
+      # permits incremental reuse after ordinary Swift/source edits.
+      - name: Restore Xcode build cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/DerivedData
+          key: astra-xcode-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Info.plist', 'ios/Sources/**/*.swift', 'ios/Sources/**/*.h', 'ios/Sources/**/*.m', 'ios/Resources/**', 'ios/Frameworks/**') }}
+          restore-keys: |
+            astra-xcode-${{ runner.os }}-
+
+      - name: Generate project
+        run: xcodegen generate --spec ios/project.yml --project ios
+      - name: Build unsigned app
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/QEMULegacyIOS.xcodeproj -scheme QEMULegacyIOS -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/DerivedData" ASTRA_VERSION="$ASTRA_VERSION" ASTRA_BUNDLE_VERSION="$ASTRA_BUNDLE_VERSION" ASTRA_BUILD_NUMBER="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO build
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          test -d "$APP_PATH/PlugIns/AstraJITHelper.appex"
+          test -s "$APP_PATH/Frameworks/StikJIT.framework/StikJIT"
+          test -s "$APP_PATH/astra-jit.js"
+          mkdir -p "$APP_PATH/Frameworks"
+          cp ios/Frameworks/libqemu-arm.dylib "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          test -s "$APP_PATH/Frameworks/libqemu-arm.dylib"
+          lipo "$APP_PATH/Frameworks/libqemu-arm.dylib" -verify_arch arm64
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && /usr/bin/zip -qry "$GITHUB_WORKSPACE/Project-Astra-unsigned.ipa" Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Project-Astra-unsigned-ipa
+          path: Project-Astra-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish successful IPA to GitHub Releases
+        if: ${{ vars.ASTRA_RELEASES_ENABLED == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="astra-v$ASTRA_VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          gh release create "$TAG" Project-Astra-unsigned.ipa \
+            --title "Project Astra $ASTRA_VERSION" \
+            --notes "Automated Project Astra IPA build. This is an unsigned IPA; installation requires a compatible signing method."
+, vendor.read_text(), re.M)
+          print("Astra source and build-script preflight passed")
+          PY
+
   build-ipa:
+    needs: preflight
     runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
