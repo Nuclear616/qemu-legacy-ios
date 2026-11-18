@@ -2,6 +2,11 @@ name: Build QEMU · Multi-device (A4 + iPhone 2G)
 
 on:
   workflow_dispatch:
+    inputs:
+      device_sources_zip_path:
+        description: "Optional repository-relative ZIP containing the QEMU device sources (leave blank to package vendor/qemu-iphone4 automatically)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -60,11 +65,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build/qemu-ios
-          key: astra-qemu-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.sdk_version }}-${{ steps.xcode.outputs.xcode_sha }}-${{ steps.qemu-meta.outputs.engine_sha }}-${{ steps.build-tools.outputs.brew_sha }}-${{ hashFiles('scripts/build-qemu-ios-engine.sh', 'scripts/stage-qemu-iphone4.sh', 'scripts/patch-qemu-ios-apple-aes.py') }}
+          key: astra-qemu-ios-${{ runner.os }}-${{ runner.arch }}-${{ steps.xcode.outputs.sdk_version }}-${{ steps.xcode.outputs.xcode_sha }}-${{ steps.qemu-meta.outputs.engine_sha }}-${{ steps.build-tools.outputs.brew_sha }}-${{ hashFiles('scripts/build-qemu-ios-engine.sh', 'scripts/stage-qemu-iphone4.sh', 'scripts/qemu-device-source-bundle.py', 'scripts/patch-qemu-iphone4-meson.py', 'scripts/patch-qemu-ios-apple-aes.py') }}
 
       - name: Cross-build QEMU for iOS ARM64
         env:
           QEMU_IOS_BUILD_ROOT: ${{ github.workspace }}/.build/qemu-ios
+          QEMU_DEVICE_SOURCES_ZIP: ${{ inputs.device_sources_zip_path }}
         run: bash scripts/build-qemu-ios-engine.sh
 
       - name: Upload iOS QEMU engine
