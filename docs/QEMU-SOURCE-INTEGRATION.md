@@ -31,6 +31,44 @@ The generic QEMU source tree is deliberately not represented as a Git submodule.
 
 This is source staging, not a verified QEMU build. A compatible full QEMU checkout, its normal build dependencies, and integration of the matching Kconfig/Meson registrations are still required before compiling.
 
+## ZIP source-bundle workflow
+
+The supplemental device implementation can be handled as one ZIP instead of
+manually copying individual C/header files. The bundle layout preserves the
+QEMU-relative paths:
+
+```text
+hw/arm/...
+hw/misc/...
+include/hw/arm/...
+include/hw/misc/...
+include/hw/net/...
+upstream/hw/arm/trace-events
+ASTRA-SOURCE-MANIFEST.json
+```
+
+`scripts/qemu-device-source-bundle.py` creates the ZIP from
+`vendor/qemu-iphone4`, adds a SHA-256 manifest, and verifies every entry
+before extraction. It rejects path traversal, symlinks, unexpected top-level
+paths, missing required files, and content that does not match the manifest.
+
+The normal engine build now automatically:
+1. Packages the complete vendored `hw/`, `include/`, and `upstream/`
+   trees into a temporary ZIP.
+2. Verifies and extracts the ZIP into a temporary staging directory.
+3. Overlays every bundled `hw/` and `include/` file into the matching
+   location under `vendor/qemu-engine/`.
+4. Merges the device-specific Meson/Kconfig registrations without replacing
+   QEMU's full registration files.
+5. Configures Meson and runs Ninja to compile the selected device source
+   closure into `qemu-system-arm`, then links the iOS runtime dylib.
+
+You can also supply a prebuilt archive by setting
+`QEMU_DEVICE_SOURCES_ZIP` to its path. The GitHub Actions multi-device
+workflow exposes this as the optional `device_sources_zip_path` input; leave
+it blank to generate the ZIP automatically from the checked-in vendor files.
+The archive must use the layout above and include the generated manifest.
+
 ## Firmware boundary
 
 The repository contains emulation code, not Apple's proprietary firmware. Supply legally obtained device firmware and any required boot-chain/identity assets separately. NAND/NOR device models and image-loading code are not themselves a NAND dump or bootable iPhone firmware.
