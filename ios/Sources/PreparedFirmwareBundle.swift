@@ -24,6 +24,8 @@ enum PreparedFirmwareBundleError: LocalizedError {
             return "The nand folder was not found beside kboot.bin."
         case .emptyNAND:
             return "The nand folder contains no files."
+        case .unsafeSymlink(let path):
+            return "The firmware folder contains an unsupported symbolic link: \(path)"
         case .copyFailed(let message):
             return message
         }
