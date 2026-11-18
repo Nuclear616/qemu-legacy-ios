@@ -270,9 +270,13 @@ struct IPSWFirmwareBrowserView: View {
             }
             let (temporaryURL, response) = try await downloader.download(from: firmware.url)
             guard (200..<300).contains(response.statusCode) else {
+                try? FileManager.default.removeItem(at: temporaryURL)
                 throw FirmwareError.downloadFailed
             }
-            guard let expectedSHA1 = firmware.sha1sum, !expectedSHA1.isEmpty else {
+            guard let expectedSHA1 = firmware.sha1sum,
+                  expectedSHA1.count == 40,
+                  expectedSHA1.allSatisfy({ $0.isHexDigit }) else {
+                try? FileManager.default.removeItem(at: temporaryURL)
                 throw FirmwareError.missingChecksum
             }
             try Self.verifySHA1(file: temporaryURL, expected: expectedSHA1)
