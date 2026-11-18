@@ -120,8 +120,14 @@ jobs:
           mkdir -p ios/Frameworks
           cp "$ENGINE_FILE" ios/Frameworks/libqemu-arm.dylib
           echo "Using published QEMU engine $ENGINE_TAG"
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install XcodeGen only when missing
+        run: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          else
+            xcodegen --version
+          fi
       - name: Download precompiled Astra StikJIT package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
