@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: qemu-ios-engine-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-ios-engine:
     runs-on: macos-15-intel
@@ -46,12 +50,15 @@ jobs:
             echo "Project Astra's on-device pairing code uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
             exit 1
           fi
+      - name: Prepare compiler and dependency cache directories
+        run: mkdir -p "$CCACHE_DIR" "$QEMU_IOS_BUILD_ROOT/deps"
+
       - name: Restore compiler and dependency caches
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/ccache
-            ${{ runner.temp }}/qemu-ios/deps
+            ${{ github.workspace }}/.cache/ccache
+            ${{ github.workspace }}/.build/qemu-ios/deps
           key: qemu-ios-${{ runner.os }}-${{ runner.arch }}-xcode26-db230fe8-c6da8592
           restore-keys: |
             qemu-ios-${{ runner.os }}-${{ runner.arch }}-xcode26-
@@ -70,10 +77,15 @@ jobs:
           LIB="ios/Frameworks/libqemu-arm.dylib"
           ENGINE_TAG="qemu-engine-${GITHUB_SHA:0:12}"
           ENGINE_SHA256="$(shasum -a 256 "$LIB" | awk '{print $1}')"
-          gh release create "$ENGINE_TAG" "$LIB" \
-            --target "$GITHUB_SHA" \
-            --title "Project Astra QEMU Engine ${GITHUB_SHA:0:12}" \
-            --notes "Automatically built iOS ARM64 QEMU engine. SHA-256: $ENGINE_SHA256"
+          if gh release view "$ENGINE_TAG" >/dev/null 2>&1; then
+            echo "Release $ENGINE_TAG already exists; replacing its engine asset safely."
+            gh release upload "$ENGINE_TAG" "$LIB" --clobber
+          else
+            gh release create "$ENGINE_TAG" "$LIB" \
+              --target "$GITHUB_SHA" \
+              --title "Project Astra QEMU Engine ${GITHUB_SHA:0:12}" \
+              --notes "Automatically built iOS ARM64 QEMU engine. SHA-256: $ENGINE_SHA256"
+          fi
 
           git fetch origin engine-binaries
           git worktree add "$RUNNER_TEMP/engine-manifest" origin/engine-binaries
@@ -99,5 +111,11 @@ jobs:
           git -C "$RUNNER_TEMP/engine-manifest" config user.name "github-actions[bot]"
           git -C "$RUNNER_TEMP/engine-manifest" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C "$RUNNER_TEMP/engine-manifest" add manifest.json
-          git -C "$RUNNER_TEMP/engine-manifest" commit -m "Publish QEMU engine manifest $ENGINE_TAG"
-          git -C "$RUNNER_TEMP/engine-manifest" push origin HEAD:engine-binaries
+          if git -C "$RUNNER_TEMP/engine-manifest" diff --cached --quiet; then
+            echo "Engine manifest already matches $ENGINE_TAG."
+          else
+            git -C "$RUNNER_TEMP/engine-manifest" commit -m "Publish QEMU engine manifest $ENGINE_TAG"
+            git -C "$RUNNER_TEMP/engine-manifest" fetch origin engine-binaries
+            git -C "$RUNNER_TEMP/engine-manifest" rebase origin/engine-binaries
+            git -C "$RUNNER_TEMP/engine-manifest" push origin HEAD:engine-binaries
+          fi
