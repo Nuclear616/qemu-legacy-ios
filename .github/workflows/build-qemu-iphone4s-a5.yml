@@ -1,0 +1,22 @@
+name: Build QEMU · iPhone 4S (A5)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# This workflow intentionally stops before provisioning a runner until the
+# device-specific QEMU machine, board sources, and boot pipeline are implemented.
+# It must never publish an A4 binary under another device's name.
+jobs:
+  preflight:
+    name: Check iPhone 4S / n94ap engine support
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain missing device implementation
+        run: |
+          echo "::error title=Device engine not implemented::iPhone 4S / n94ap is selectable in Astra, but the pinned QEMU tree does not yet provide an integrated iPhone 4S / n94ap board and boot pipeline."
+          echo "No macOS runner was started and no artifact was generated."
+          echo "Implement and validate this device's QEMU machine, firmware layout, and runtime ABI before enabling the expensive build."
+          exit 1
