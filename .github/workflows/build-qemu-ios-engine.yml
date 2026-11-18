@@ -19,6 +19,11 @@ jobs:
   build-ios-engine:
     runs-on: macos-15-intel
     timeout-minutes: 120
+    env:
+      CCACHE_DIR: ${{ runner.temp }}/ccache
+      CCACHE_MAXSIZE: 5G
+      CCACHE_COMPILERCHECK: content
+      QEMU_IOS_BUILD_ROOT: ${{ runner.temp }}/qemu-ios
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,8 +46,18 @@ jobs:
             echo "Project Astra's on-device pairing code uses iOS 26 SDK APIs; install/select Xcode 26 or newer." >&2
             exit 1
           fi
+      - name: Restore compiler and dependency caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/ccache
+            ${{ runner.temp }}/qemu-ios/deps
+          key: qemu-ios-${{ runner.os }}-${{ runner.arch }}-xcode26-db230fe8-c6da8592
+          restore-keys: |
+            qemu-ios-${{ runner.os }}-${{ runner.arch }}-xcode26-
+
       - name: Install native QEMU build dependencies
-        run: brew install glib pixman libslirp ninja meson pkgconf
+        run: brew install glib pixman libslirp ninja meson pkgconf ccache
 
       - name: Cross-build QEMU for iOS ARM64
         run: bash scripts/build-qemu-ios-engine.sh
@@ -75,7 +90,8 @@ jobs:
               "library": "libqemu-arm.dylib",
               "required_symbols": [
                   "qemu_ios_main", "qemu_ios_ui_attach", "qemu_ios_ui_frame",
-                  "qemu_ios_ui_touch", "qemu_ios_ui_button"
+                  "qemu_ios_ui_touch", "qemu_ios_ui_button", "qemu_ios_ui_ready",
+                  "qemu_ios_ui_storage_failed", "qemu_ios_ui_guest_shutdown_confirmed"
               ]
           }
           path.write_text(json.dumps(manifest, indent=2) + "\n")

@@ -102,9 +102,9 @@ mkdir -p "$IOS"
 CROSS="$IOS/cross-ios-arm64.txt"
 cat > "$CROSS" <<EOF
 [binaries]
-c = 'clang'
-cpp = 'clang++'
-objc = 'clang'
+c = ['ccache', 'clang']
+cpp = ['ccache', 'clang++']
+objc = ['ccache', 'clang']
 ar = '$AR'
 strip = '$STRIP'
 ranlib = '$RANLIB'
@@ -180,8 +180,8 @@ for name in ("qemu-ios-entry", "qemu-ios-ui"):
     if not any(arg == str(source) for arg in args):
         raise SystemExit(f"Could not replace system/main.c with {source}")
     args.extend(["-I", str(engine / "target/arm"), "-I", str(engine / "contrib/ios-app"), "-fPIC"])
-    print("Compiling", source)
-    subprocess.run(args, cwd=entry["directory"], check=True)
+    print("Compiling through ccache:", source)
+    subprocess.run(["ccache", *args], cwd=entry["directory"], check=True)
 PY
 
 # Relink the emulator's exact object/library set as an embeddable iOS dylib,
@@ -193,13 +193,27 @@ commands = subprocess.check_output(
     ["ninja", "-C", str(build), "-t", "commands", "qemu-system-arm-unsigned"],
     text=True
 ).splitlines()
-if not commands:
-    raise SystemExit("Ninja did not expose the qemu-system-arm-unsigned link command")
-args = shlex.split(commands[-1])
 entry = build / "qemu-ios-entry.o"
 ui = build / "qemu-ios-ui.o"
 out = root / "ios/Frameworks/libqemu-arm.dylib"
 exports = build / "ios-exports.syms"
+
+# Meson sanitizes path separators in target-private object names. The actual
+# object is qemu-system-arm-unsigned.p/system_main.c.o, not system/main.c.o.
+# Select the final link command by its output, then match the object basename.
+selected = None
+for command in commands:
+    candidate = shlex.split(command)
+    try:
+        output_index = candidate.index("-o") + 1
+        output_name = pathlib.Path(candidate[output_index]).name
+    except (ValueError, IndexError):
+        continue
+    if output_name == "qemu-system-arm-unsigned":
+        selected = candidate
+if selected is None:
+    raise SystemExit("Could not locate qemu-system-arm-unsigned link command")
+
 exports.write_text("""_qemu_ios_main
 _qemu_ios_device_info
 _qemu_ios_device_info_at
@@ -215,9 +229,9 @@ _qemu_ios_ui_guest_shutdown_confirmed
 _qemu_ios_ui_display_sleeping
 _qemu_ios_ui_backlight_level
 """)
-result, skip = [], False
-replaced = False
-for arg in args:
+
+result, skip, replaced = [], False, False
+for arg in selected:
     if skip:
         skip = False
         continue
@@ -226,13 +240,17 @@ for arg in args:
         continue
     if arg in ("-pie", "-Wl,-pie", "-Wl,-no_pie"):
         continue
-    if arg.endswith("system/main.c.o"):
+    if pathlib.Path(arg).name == "system_main.c.o":
         result.extend([str(entry), str(ui)])
         replaced = True
     else:
         result.append(arg)
 if not replaced:
-    raise SystemExit("Could not replace system/main.c.o in QEMU's link command")
+    candidates = [a for a in selected if a.endswith(".o") and "main" in pathlib.Path(a).name]
+    raise SystemExit(
+        "Could not find Meson's system_main.c.o in QEMU link command; "
+        f"main-object candidates: {candidates}"
+    )
 out.parent.mkdir(parents=True, exist_ok=True)
 result.extend([
     "-dynamiclib", "-o", str(out),
@@ -248,11 +266,12 @@ LIB="$ROOT/ios/Frameworks/libqemu-arm.dylib"
 test -s "$LIB"
 vtool -show-build-version "$LIB"
 symbols="$(nm -gU "$LIB")"
-for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_ready qemu_ios_ui_storage_failed qemu_ios_ui_guest_shutdown_confirmed; do
+for symbol in qemu_ios_main qemu_ios_ui_attach qemu_ios_ui_frame qemu_ios_ui_touch qemu_ios_ui_button qemu_ios_ui_ready qemu_ios_ui_storage_failed qemu_ios_ui_guest_shutdown_confirmed; do
     if ! grep -q " _$symbol$" <<<"$symbols"; then
         echo "Missing exported iOS runtime symbol: $symbol" >&2
         exit 5
     fi
 done
 file "$LIB"
+ccache --show-stats || true
 echo "Built iOS QEMU runtime: $LIB"
