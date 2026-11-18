@@ -52,6 +52,9 @@ def extract(archive: pathlib.Path, destination: pathlib.Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive) as zf:
         infos = [i for i in zf.infolist() if not i.is_dir()]
+        names = [i.filename for i in infos]
+        if len(names) != len(set(names)):
+            raise SystemExit("Duplicate file paths are not allowed in the source bundle")
         for info in infos:
             if info.filename == MANIFEST:
                 continue
