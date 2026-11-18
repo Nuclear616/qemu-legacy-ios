@@ -12,6 +12,7 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_KEY_CFBundleDisplayName: Project Astra
     INFOPLIST_KEY_CFBundleShortVersionString: "$(ASTRA_BUNDLE_VERSION)"
+    INFOPLIST_KEY_CFBundleVersion: "$(ASTRA_BUILD_NUMBER)"
     INFOPLIST_KEY_AstraAppVersion: "$(ASTRA_VERSION)"
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
 targets:
